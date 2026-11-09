@@ -131,3 +131,9 @@ examples/                Contoh source pseudocode & tugas praktikum
 
 - https://github.com/fkesa/algoritma-pemrograman
 - https://github.com/fkesa/algoritma-pemrograman-praktikum
+
+# For Development
+```bash
+git clone https://github.com/fkesa/pseugo-telkomuniversity
+cd pseugo-telkomuniversity && go build -o .\build\pseugo.exe .\cmd\pseugo
+```
