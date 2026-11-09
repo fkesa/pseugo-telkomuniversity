@@ -1,116 +1,133 @@
-# Pseudocode Compiler (Go)
+# Pseudocode Compiler & Go Transpiler
 
-Compiler pembelajaran untuk subset pseudocode pada materi Algoritma dan Pemrograman. Pipeline:
+Compiler dan transpiler dua arah untuk subset pseudocode pada materi perkuliahan Algoritma dan Pemrograman (Alpro) Telkom University.
 
-`source -> lexer -> parser -> AST -> semantic/type checker -> Go code generator`
+Alur pemrosesan:
+- **Pseudocode ke Go**: `pseudocode source -> lexer -> parser -> AST -> semantic/type checker -> Go code generator`
+- **Go ke Pseudocode**: `Go source -> Go parser/AST -> decompiler/transpiler -> pseudocode source`
 
-Compiler menghasilkan source Go; compiler ini tidak mengeksekusi pseudocode secara langsung.
+Untuk dokumentasi lengkap logika pseudocode, tipe data, operator, dan padanan sintaks, silakan baca [docs/pseudocode_logic.md](docs/pseudocode_logic.md).
+
+---
 
 ## Persyaratan
 
 - Go 1.22 atau lebih baru
-- Tidak memakai dependency eksternal
+- Tanpa dependensi eksternal (menggunakan Go standard library murni)
 
-## Menjalankan
+---
 
-Dari direktori proyek:
+## Cara Menjalankan (`pseugo`)
 
+### 1. Konversi Pseudocode ke Golang
 ```bash
-go test ./...
-go run ./cmd/pseudoc -in examples/div_mod.pseudo -out build/div_mod.go
+# Simpan hasil Go ke file
+go run ./cmd/pseugo convert -to-golang -i examples/div_mod.pseudo -o build/div_mod.go
+
+# Atau cetak langsung ke stdout (tanpa -o)
+go run ./cmd/pseugo convert -to-golang -i examples/div_mod.pseudo
+
+# Jalankan kode Go yang dihasilkan
 go run ./build/div_mod.go
 ```
 
-Tampilkan token lexer:
-
+### 2. Konversi Golang ke Pseudocode
 ```bash
-go run ./cmd/pseudoc -in examples/div_mod.pseudo -tokens
+# Simpan hasil pseudocode ke file
+go run ./cmd/pseugo convert -to-pseu -i build/div_mod.go -o div_mod.pseudo
+
+# Atau cetak langsung ke stdout (tanpa -o)
+go run ./cmd/pseugo convert -to-pseu -i build/div_mod.go
 ```
 
-Tanpa `-out`, hasil Go dicetak ke stdout:
-
+### 3. Typechecker Pseudocode (Validasi Semantik Tanpa Kompilasi)
 ```bash
-go run ./cmd/pseudoc -in examples/div_mod.pseudo
+go run ./cmd/pseugo check examples/div_mod.pseudo
 ```
 
-## Sintaks yang didukung
+### 4. Tampilkan Token Lexer
+```bash
+go run ./cmd/pseugo tokens examples/div_mod.pseudo
+```
+
+---
+
+## Sintaks & Logika yang Didukung
 
 ```text
 program NamaProgram
 kamus
-  nilai : integer
+  nilai, total : integer
   a, b : real
   constant batas : integer <- 10
   type waktu <
     jam : integer
     menit : integer
   >
+  wt : waktu
 algoritma
   nilai <- 2 + 3 * 4
   input(a)
   output("hasil:", nilai)
+
+  // Percabangan
+  if nilai >= batas then
+    output("Di atas batas")
+  elseif nilai = 0 then
+    output("Nol")
+  else
+    output("Di bawah batas")
+  endif
+
+  // Perulangan For (Maju dan Mundur)
   for i <- 1 to 5 do
     nilai <- nilai + i
   endfor
+
+  // Perulangan While
+  while nilai > 0 do
+    nilai <- nilai - 1
+  endwhile
+
+  // Perulangan Repeat-Until
+  repeat
+    nilai <- nilai + 2
+  until nilai >= 10
 endprogram
 ```
 
-- Tipe dasar: `boolean`, `string`, `char`, `integer`/`int`, dan `real`.
-- Deklarasi variabel satu atau beberapa nama dalam satu baris.
-- Konstanta dengan `constant nama : tipe <- ekspresi`.
-- Deklarasi record `type Nama < ... >` dan variabel dengan tipe record tersebut.
-- Alias variabel dengan `nama_alias : nama_variabel_yang_sudah_dideklarasikan`; alias menunjuk ke penyimpanan variabel yang sama.
-- Assignment dengan `<-`.
-- `input(...)` dan `output(...)`. Input membaca token yang dipisahkan whitespace; untuk `char`, token pertama dibaca sebagai satu rune.
-- Perulangan inklusif `for i <- awal to akhir do ... endfor` dan `downto`.
-- Operator aritmetika `+`, `-`, `*`, `DIV`, `MOD`.
-- Operator logika `NOT`, `AND`, `OR`, `XOR`.
-- Perbandingan `=`, `==`, `/=`, `!=`, `<`, `<=`, `>`, `>=`.
-- Tanda kurung, literal integer/real/string/char, dan boolean `true`/`false` atau `benar`/`salah`.
-- Pemisah statement/deklarasi berupa baris baru atau `;`.
+### Rangkuman Logika & Fitur:
+- **Tipe data dasar**: `integer`/`int`, `real`/`float`, `boolean`/`bool`, `string`, dan `char`/`rune`.
+- **Tipe bentukan (Record)**: `type Nama < ... >` dan akses field record (`wt.jam`).
+- **Konstanta**: `constant nama : tipe <- nilai`.
+- **Alias variabel**: `alias : original` (merujuk ke alokasi memori yang sama).
+- **Assignment**: `<-`.
+- **Input / Output**: `input(...)` dan `output(...)`.
+- **Percabangan**: `if ... then ... elseif ... then ... else ... endif`.
+- **Perulangan**:
+  - `for ... to ... do ... endfor` (inklusif maju)
+  - `for ... downto ... do ... endfor` (inklusif mundur)
+  - `while ... do ... endwhile`
+  - `repeat ... until ...`
+- **Operator aritmetika**: `+`, `-`, `*`, `/` (pembagian riil), `DIV` (pembagian bulat), `MOD` (modulo integer).
+- **Operator logika**: `NOT`, `AND`, `OR`, `XOR`.
+- **Operator perbandingan**: `=`, `==`, `/=`, `!=`, `<>`, `<`, `<=`, `>`, `>=`.
+- **Dukungan multi-program** dalam satu file.
 
-## Aturan tipe
+---
 
-- Pemeriksaan tipe dilakukan statis sebelum code generation.
-- Assignment harus memiliki tipe yang sama; tidak ada konversi integer-real otomatis.
-- `DIV` dan `MOD` hanya menerima dua operand `integer` dan menghasilkan `integer`.
-- `AND`, `OR`, `XOR`, dan `NOT` hanya menerima boolean.
-- Batas `for` harus bertipe `integer`.
-- Konstanta tidak boleh diubah atau menjadi target `input`.
-
-## Batasan dan asumsi yang perlu diverifikasi dengan dosen/modul
-
-Materi README sumber menyebut `IF ELSE` belum diajarkan, jadi konstruksi tersebut sengaja belum dimasukkan. Materi yang tersedia juga belum menetapkan tata bahasa komentar, aturan case-sensitive, sintaks perbandingan secara formal, literal boolean/char, akses field record (`wt.jam`), maupun perilaku `DIV`/`MOD` untuk bilangan negatif. Implementasi ini mengambil asumsi berikut:
-
-1. Keyword dan operator kata (`DIV`, `MOD`, `AND`, dan seterusnya) case-insensitive; nama variabel dan nama tipe buatan sendiri case-sensitive.
-2. `true`/`false` serta `benar`/`salah` diterima sebagai literal boolean.
-3. String memakai tanda kutip ganda dan char memakai tanda kutip tunggal dengan escape ala Go.
-4. `for` berjalan sampai batas akhir secara inklusif.
-5. `DIV` dan `MOD` mengikuti pembagian dan remainder integer Go. Perilaku pada operand negatif perlu dicocokkan dengan definisi mata kuliah.
-6. Record bisa dideklarasikan sebagai tipe dan variabel, tetapi akses/assignment field belum didukung karena sintaksnya belum terlihat di materi yang dirujuk.
-7. Komentar belum didukung. Jangan menambahkan sintaks komentar sebelum aturan resminya diketahui.
-
-Lexer dan parser menghentikan proses pada kesalahan pertama karena token/struktur setelahnya mungkin tidak dapat dipercaya. Type checker mengumpulkan beberapa diagnostic semantik dalam satu proses.
-
-## Struktur
+## Struktur Proyek
 
 ```text
-cmd/pseudoc/             CLI
-internal/compiler/       lexer, parser, AST, type checker, Go code generator
-examples/                contoh source pseudocode
+cmd/pseugo/              CLI compiler & decompiler
+docs/                    Dokumentasi lengkap logika & sintaks pseudocode
+internal/cli/            Implementasi perintah & argumen CLI
+internal/compiler/       Lexer, parser, AST, type checker, code generator, decompiler
+test/                    Seluruh file pengujian (unit, integration, dan round-trip tests)
+examples/                Contoh source pseudocode & tugas praktikum
 ```
 
-## Repositori materi rujukan
+## Repositori Materi Rujukan
 
 - https://github.com/fkesa/algoritma-pemrograman
 - https://github.com/fkesa/algoritma-pemrograman-praktikum
-
-## Contoh yang disertakan
-
-- `examples/hello.pseudo`: input string dan integer serta output.
-- `examples/div_mod.pseudo`: pembagian integer dan sisa bagi.
-- `examples/loop.pseudo`: loop `to` dan `downto`.
-- `examples/record.pseudo`: record, konstanta, dan tipe custom.
-- `examples/alias.pseudo`: dua nama untuk storage variabel yang sama.
-- `examples/literals.pseudo`: real, char, boolean, dan operator logika.
-- `examples/input_char.pseudo`: pembacaan karakter.

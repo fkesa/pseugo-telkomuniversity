@@ -1,8 +1,10 @@
-package compiler
+package test
 
 import (
 	"strings"
 	"testing"
+
+	"pseudocode-compiler/internal/compiler"
 )
 
 func TestVariableAliasSharesStorage(t *testing.T) {
@@ -15,7 +17,7 @@ algoritma
   output(original)
 endprogram
 `
-	result, err := Compile(source)
+	result, err := compiler.Compile(source)
 	if err != nil {
 		t.Fatal(err)
 	}

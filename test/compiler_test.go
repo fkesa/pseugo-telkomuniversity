@@ -1,8 +1,10 @@
-package compiler
+package test
 
 import (
 	"strings"
 	"testing"
+
+	"pseudocode-compiler/internal/compiler"
 )
 
 func TestCompileDivMod(t *testing.T) {
@@ -17,7 +19,7 @@ algoritma
   output(q, r)
 endprogram
 `
-	result, err := Compile(source)
+	result, err := compiler.Compile(source)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +36,7 @@ algoritma
   age <- "teks"
 endprogram
 `
-	_, err := Compile(source)
+	_, err := compiler.Compile(source)
 	if err == nil || !strings.Contains(err.Error(), "cannot assign") {
 		t.Fatalf("expected type mismatch, got %v", err)
 	}
@@ -50,7 +52,7 @@ algoritma
   c <- a MOD b
 endprogram
 `
-	_, err := Compile(source)
+	_, err := compiler.Compile(source)
 	if err == nil || !strings.Contains(err.Error(), "only for integer") {
 		t.Fatalf("expected MOD type error, got %v", err)
 	}
@@ -64,7 +66,7 @@ algoritma
   limit <- 10
 endprogram
 `
-	_, err := Compile(source)
+	_, err := compiler.Compile(source)
 	if err == nil || !strings.Contains(err.Error(), "cannot assign to constant") {
 		t.Fatalf("expected constant assignment error, got %v", err)
 	}
@@ -79,7 +81,7 @@ algoritma
   c <- a / b
 endprogram
 `
-	if _, err := Compile(source); err != nil {
+	if _, err := compiler.Compile(source); err != nil {
 		t.Fatalf("expected real division to compile: %v", err)
 	}
 }
@@ -93,7 +95,7 @@ algoritma
   output(second)
 endprogram
 `
-	if _, err := Compile(source); err != nil {
+	if _, err := compiler.Compile(source); err != nil {
 		t.Fatalf("expected earlier-constant reference to compile: %v", err)
 	}
 }
@@ -107,7 +109,7 @@ algoritma
   output(first)
 endprogram
 `
-	_, err := Compile(source)
+	_, err := compiler.Compile(source)
 	if err == nil || !strings.Contains(err.Error(), "previously declared constants") {
 		t.Fatalf("expected forward constant reference error, got %v", err)
 	}

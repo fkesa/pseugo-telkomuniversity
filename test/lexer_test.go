@@ -1,9 +1,13 @@
-package compiler
+package test
 
-import "testing"
+import (
+	"testing"
+
+	"pseudocode-compiler/internal/compiler"
+)
 
 func TestLexerRecognizesDivModAndAssignment(t *testing.T) {
-	tokens, err := NewLexer("hasil <- 100 DIV 8 MOD 3").AllTokens()
+	tokens, err := compiler.NewLexer("hasil <- 100 DIV 8 MOD 3").AllTokens()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -19,31 +23,31 @@ func TestLexerRecognizesDivModAndAssignment(t *testing.T) {
 }
 
 func TestLexerReportsInvalidCharacter(t *testing.T) {
-	_, err := NewLexer("nilai <- 3 @ 4").AllTokens()
+	_, err := compiler.NewLexer("nilai <- 3 @ 4").AllTokens()
 	if err == nil {
 		t.Fatal("expected lexer error")
 	}
 }
 
 func TestLexerReportsUnterminatedString(t *testing.T) {
-	_, err := NewLexer("output(\"belum selesai)").AllTokens()
+	_, err := compiler.NewLexer("output(\"belum selesai)").AllTokens()
 	if err == nil {
 		t.Fatal("expected unterminated string error")
 	}
 }
 
 func TestLexerReadsQuotedChar(t *testing.T) {
-	tokens, err := NewLexer("'A'").AllTokens()
+	tokens, err := compiler.NewLexer("'A'").AllTokens()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tokens[0].Kind != TokenChar {
+	if tokens[0].Kind != compiler.TokenChar {
 		t.Fatalf("got %s, want char literal", tokens[0].Kind)
 	}
 }
 
 func TestLexerRecognizesNotEqual(t *testing.T) {
-	tokens, err := NewLexer("a != b").AllTokens()
+	tokens, err := compiler.NewLexer("a != b").AllTokens()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -16,40 +16,56 @@ type Result struct {
 	GoSource string
 }
 
+// CheckSource performs lexical analysis, syntax parsing, and semantic/type checking
+// on pseudocode source code without running code generation.
+func CheckSource(source string) ([]*Program, error) {
+	tokens, err := NewLexer(source).AllTokens()
+	if err != nil {
+		return nil, err
+	}
+
+	programs, err := NewParser(tokens).ParsePrograms()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, prog := range programs {
+		checker := NewChecker()
+		diagnostics := checker.Check(prog)
+
+		if len(diagnostics) > 0 {
+			return nil, fmt.Errorf(
+				"semantic analysis failed in program %q:\n%w",
+				prog.Name,
+				errors.Join(diagnostics...),
+			)
+		}
+	}
+
+	return programs, nil
+}
+
 func Compile(source string) (*Result, error) {
-    tokens, err := NewLexer(source).AllTokens()
-    if err != nil {
-        return nil, err
-    }
+	tokens, err := NewLexer(source).AllTokens()
+	if err != nil {
+		return nil, err
+	}
 
-    programs, err := NewParser(tokens).ParsePrograms()
-    if err != nil {
-        return nil, err
-    }
+	programs, err := CheckSource(source)
+	if err != nil {
+		return nil, err
+	}
 
-    for _, prog := range programs {
-        checker := NewChecker()
-        diagnostics := checker.Check(prog)
+	goSource, err := generateGoPrograms(programs)
+	if err != nil {
+		return nil, err
+	}
 
-        if len(diagnostics) > 0 {
-            return nil, fmt.Errorf(
-                "semantic analysis failed in program %q:\n%w",
-                prog.Name,
-                errors.Join(diagnostics...),
-            )
-        }
-    }
-
-    goSource, err := generateGoPrograms(programs)
-    if err != nil {
-        return nil, err
-    }
-
-    return &Result{
-        Tokens:   tokens,
-        Program:  programs[0],
-        GoSource: goSource,
-    }, nil
+	return &Result{
+		Tokens:   tokens,
+		Program:  programs[0],
+		GoSource: goSource,
+	}, nil
 }
 
 func generateGoPrograms(programs []*Program) (string, error) {

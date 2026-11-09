@@ -1,6 +1,10 @@
-package compiler
+package test
 
-import "testing"
+import (
+	"testing"
+
+	"pseudocode-compiler/internal/compiler"
+)
 
 func TestParserBuildsNestedForLoops(t *testing.T) {
 	source := `program Nested
@@ -15,27 +19,27 @@ algoritma
   endfor
 endprogram
 `
-	result, err := Compile(source)
+	result, err := compiler.Compile(source)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(result.Program.Body) != 2 {
 		t.Fatalf("got %d top-level statements, want 2", len(result.Program.Body))
 	}
-	outer, ok := result.Program.Body[1].(ForStmt)
+	outer, ok := result.Program.Body[1].(compiler.ForStmt)
 	if !ok {
 		t.Fatalf("second statement has type %T, want ForStmt", result.Program.Body[1])
 	}
 	if len(outer.Body) != 1 {
 		t.Fatalf("outer loop has %d body statements, want 1", len(outer.Body))
 	}
-	if _, ok := outer.Body[0].(ForStmt); !ok {
+	if _, ok := outer.Body[0].(compiler.ForStmt); !ok {
 		t.Fatalf("outer loop child has type %T, want nested ForStmt", outer.Body[0])
 	}
 }
 
-func TestParserRejectsUnsupportedIf(t *testing.T) {
-	source := `program Unsupported
+func TestParserSupportsIf(t *testing.T) {
+	source := `program Supported
 kamus
   x : integer
 algoritma
@@ -44,8 +48,8 @@ algoritma
   endif
 endprogram
 `
-	_, err := Compile(source)
-	if err == nil {
-		t.Fatal("expected parser error because IF is not part of the implemented grammar")
+	_, err := compiler.Compile(source)
+	if err != nil {
+		t.Fatalf("expected compile to succeed with IF, got: %v", err)
 	}
 }

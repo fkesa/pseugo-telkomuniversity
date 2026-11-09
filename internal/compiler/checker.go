@@ -270,7 +270,7 @@ func (c *Checker) infer(e Expr, env map[string]Symbol) string {
 	case IdentExpr:
 		sym, ok := env[v.Name]
 		if !ok {
-			c.report(v.Pos, "assignment target is not declared")
+			c.report(v.Pos, "variable %q is not declared", v.Name)
 			return "<error>"
 		}
 		return sym.Type
