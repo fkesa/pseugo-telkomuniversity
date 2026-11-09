@@ -1,0 +1,8 @@
+program AliasVariabel
+kamus
+  nilai_asli : integer
+  alias_nilai : nilai_asli
+algoritma
+  alias_nilai <- 42
+  output(nilai_asli, alias_nilai)
+endprogram

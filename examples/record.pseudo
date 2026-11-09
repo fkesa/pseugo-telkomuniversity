@@ -1,0 +1,12 @@
+program DataWaktu
+kamus
+  type waktu <
+    jam : integer
+    menit : integer
+    detik : integer
+  >
+  constant jumlah_menit : integer <- 1234
+  wt : waktu
+algoritma
+  output("total menit:", jumlah_menit)
+endprogram

@@ -1,0 +1,101 @@
+program fajar_prisma
+kamus
+    type prisma <
+        panjang : real
+        lebar : real
+        tinggi : real
+        volume : real
+        luas_permukaan : real
+    >
+    pr : prisma
+algoritma
+    input(pr.panjang, pr.lebar, pr.tinggi)
+    pr.volume <- pr.panjang * pr.lebar * pr.tinggi
+    pr.luas_permukaan <- 2 * (pr.panjang * pr.lebar) + ((2 * pr.panjang + 2 * pr.lebar) * pr.tinggi)
+    output(pr.volume, pr.luas_permukaan)
+endprogram
+
+program linda_waktu
+kamus
+    total_detik, j, m, d : integer
+algoritma
+    input(total_detik)
+    j <- total_detik DIV 3600
+    m <- (total_detik MOD 3600) DIV 60
+    d <- total_detik MOD 60
+    output(j, m, d)
+endprogram
+
+program vektor
+kamus
+    i, n : integer
+    x, y, z, jumlah_x, jumlah_y, jumlah_z, rata_rata_x, rata_rata_y, rata_rata_z : real
+algoritma
+    input(n)
+    jumlah_x <- 0.0
+    jumlah_y <- 0.0
+    jumlah_z <- 0.0
+    for i <- 1 to n do
+        input(x, y, z)
+        jumlah_x <- jumlah_x + x
+        jumlah_y <- jumlah_y + y
+        jumlah_z <- jumlah_z + z
+    endfor
+    rata_rata_x <- jumlah_x / 3.0
+    rata_rata_y <- jumlah_y / 3.0
+    rata_rata_z <- jumlah_z / 3.0
+    output(rata_rata_x, rata_rata_y, rata_rata_z)
+endprogram
+
+program determinan
+kamus
+    a, b, c, d, det : real
+algoritma
+    input(a, b, c, d)
+    det <- (a * d) - (b * c)
+    output(det)
+endprogram
+
+program bola
+kamus
+    i, n, massa, volume, jumlah : integer
+    rata_rata : real
+algoritma
+    input(n)
+    jumlah <- 0
+    for i <- 1 to n do
+        input(massa, volume)
+        jumlah <- jumlah + massa * volume
+    endfor
+    rata_rata <- jumlah / n
+    output(rata_rata)
+endprogram
+
+program AND_berulang
+kamus
+    i, n : integer
+    in_bool, hasil : boolean
+algoritma
+    input(n)
+    hasil <- true
+    for i <- 1 to n do
+        input(in_bool)
+        hasil <- (hasil AND in_bool)
+    endfor
+    output(hasil)
+endprogram
+
+program sum_ganjil
+kamus
+    i, x, y, mulai, jumlah : integer
+algoritma
+    input(x, y)
+    mulai <- x + 1 - (x MOD 2)
+    jumlah <- 0
+    i <- mulai
+    while i <= y do
+        jumlah <- jumlah + i
+        i <- i + 2
+    endwhile
+    output(jumlah)
+endprogram

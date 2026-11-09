@@ -1,0 +1,12 @@
+program Pembagian
+kamus
+  bil1, bil2 : integer
+  hasil_bagi : integer
+  sisa_bagi : integer
+algoritma
+  bil1 <- 100
+  bil2 <- 8
+  hasil_bagi <- bil1 DIV bil2
+  sisa_bagi <- bil1 MOD bil2
+  output(hasil_bagi, sisa_bagi)
+endprogram

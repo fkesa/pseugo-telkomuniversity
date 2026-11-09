@@ -1,0 +1,10 @@
+program Halo
+kamus
+  nama : string
+  umur : integer
+algoritma
+  input(nama)
+  input(umur)
+  output("Halo", nama)
+  output("Umur:", umur)
+endprogram

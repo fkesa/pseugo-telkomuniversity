@@ -1,0 +1,7 @@
+program BacaKarakter
+kamus
+  huruf : char
+algoritma
+  input(huruf)
+  output("huruf:", huruf)
+endprogram

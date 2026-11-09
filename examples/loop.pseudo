@@ -1,0 +1,13 @@
+program HitungMajuMundur
+kamus
+  jumlah : integer
+algoritma
+  jumlah <- 0
+  for i <- 1 to 5 do
+    jumlah <- jumlah + i
+  endfor
+  output("jumlah 1 sampai 5:", jumlah)
+  for j <- 3 downto 1 do
+    output(j)
+  endfor
+endprogram

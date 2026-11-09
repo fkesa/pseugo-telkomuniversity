@@ -1,0 +1,13 @@
+program LiteralsDanBoolean
+kamus
+  nilai_real : real
+  simbol : char
+  aktif, sukses, kondisi : boolean
+algoritma
+  nilai_real <- 5.5 + 1.5
+  simbol <- 'Z'
+  aktif <- benar
+  sukses <- false
+  kondisi <- NOT aktif OR sukses XOR (aktif AND sukses)
+  output(nilai_real, simbol, aktif, kondisi)
+endprogram

@@ -1,0 +1,11 @@
+program hitung_ulang
+kamus
+    N, j : integer
+algoritma
+    input(N)
+    j <- 1
+    repeat
+        output(j)
+        j <- j + 1
+    until j > N
+endprogram
