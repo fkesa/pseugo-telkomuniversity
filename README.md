@@ -98,7 +98,6 @@ Lexer dan parser menghentikan proses pada kesalahan pertama karena token/struktu
 cmd/pseudoc/             CLI
 internal/compiler/       lexer, parser, AST, type checker, Go code generator
 examples/                contoh source pseudocode
-docs/                    grammar, arsitektur, dan keputusan desain
 ```
 
 ## Repositori materi rujukan
@@ -115,5 +114,3 @@ docs/                    grammar, arsitektur, dan keputusan desain
 - `examples/alias.pseudo`: dua nama untuk storage variabel yang sama.
 - `examples/literals.pseudo`: real, char, boolean, dan operator logika.
 - `examples/input_char.pseudo`: pembacaan karakter.
-
-Lihat `docs/compiler-architecture.md` untuk penjelasan komponen dan `docs/language-spec.md` untuk subset grammar yang diterapkan.
