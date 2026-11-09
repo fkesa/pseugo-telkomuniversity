@@ -198,7 +198,7 @@ depend on indeks
     'B':
         batasA <- 75
         batasB <- 65
-    case 'C':
+    'C':
         batasA <- 65
         batasB <- 50
     default:
@@ -206,7 +206,7 @@ depend on indeks
         batasB <- 0
 enddepend
 ```
-> Blok percabangan dapat ditutup menggunakan kata kunci `enddepend` atau `end`. Label klausa dapat berupa nilai langsung (`1:`), daftar nilai (`2, 3:`), diawali kata kunci `case` (`case 'C':`), atau klausa fallback `default:`.
+> Blok percabangan dapat ditutup menggunakan kata kunci `end` atau `enddepend`. Di pseudocode tidak menggunakan kata `case` (langsung nilai `'A':` atau daftar `1, 2:`), kata `case` hanya digunakan pada Go. Namun compiler tetap menoleransi jika ada yang menulis kata `case`.
 
 ### Perulangan (Looping)
 

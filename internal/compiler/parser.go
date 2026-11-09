@@ -121,9 +121,15 @@ func (p *Parser) parseSingleProgram() (*Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	name, err := p.expectIdent()
-	if err != nil {
-		return nil, err
+	var progName string
+	if p.current().Kind == TokenIdent || p.current().Kind == TokenOp {
+		progName = p.advance().Text
+	} else {
+		name, err := p.expectIdent()
+		if err != nil {
+			return nil, err
+		}
+		progName = name.Text
 	}
 	if err = p.expectLineEnd(); err != nil {
 		return nil, err
@@ -134,7 +140,7 @@ func (p *Parser) parseSingleProgram() (*Program, error) {
 	if err = p.expectLineEnd(); err != nil {
 		return nil, err
 	}
-	prog := &Program{Name: name.Text, Pos: start.Pos}
+	prog := &Program{Name: progName, Pos: start.Pos}
 	for !p.isWord("algoritma") {
 		p.skipSeparators()
 		if p.isWord("algoritma") {
@@ -530,7 +536,13 @@ func (p *Parser) parseIf() (Stmt, error) {
 	}
 
 	var elseBody []Stmt
-	if p.isWord("elseif") {
+	isElseIf := p.isWord("elseif")
+	if !isElseIf && p.isWord("else") && p.index+1 < len(p.tokens) && p.tokens[p.index+1].Kind == TokenIdent && strings.EqualFold(p.tokens[p.index+1].Text, "if") {
+		p.advance() // consume "else"
+		isElseIf = true
+	}
+
+	if isElseIf {
 		nestedIf, err := p.parseIf()
 		if err != nil {
 			return nil, err

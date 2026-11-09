@@ -214,10 +214,18 @@ func (l *Lexer) NextToken() (Token, error) {
 			l.advance()
 			l.advance()
 			return Token{Kind: TokenOp, Text: "!=", Pos: pos}, nil
+		case ch == '&' && l.peek(1) == '&':
+			l.advance()
+			l.advance()
+			return Token{Kind: TokenOp, Text: "AND", Pos: pos}, nil
+		case ch == '|' && l.peek(1) == '|':
+			l.advance()
+			l.advance()
+			return Token{Kind: TokenOp, Text: "OR", Pos: pos}, nil
 		case strings.ContainsRune("+-*/%=<>!", ch):
 			l.advance()
 			return Token{Kind: TokenOp, Text: string(ch), Pos: pos}, nil
-		case strings.ContainsRune("(),:;<>. ", ch):
+		case strings.ContainsRune("(),:;<>.[] ", ch):
 			l.advance()
 			return Token{Kind: TokenSymbol, Text: string(ch), Pos: pos}, nil
 		default:

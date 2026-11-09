@@ -335,6 +335,62 @@ func (g *CodeGenerator) stmt(s Stmt) {
 	}
 }
 
+func (g *CodeGenerator) typeOf(e Expr) string {
+	switch v := e.(type) {
+	case LiteralExpr:
+		switch v.Kind {
+		case TokenInt:
+			return TypeInteger
+		case TokenReal:
+			return TypeReal
+		case TokenString:
+			return TypeString
+		case TokenChar:
+			return TypeChar
+		case TokenIdent:
+			return TypeBoolean
+		}
+	case IdentExpr:
+		name := g.resolveAlias(v.Name)
+		return g.varTypes[name]
+	case FieldExpr:
+		raw := g.exprToRawName(v)
+		if t, ok := g.varTypes[raw]; ok {
+			return t
+		}
+		if baseId, ok := v.Base.(IdentExpr); ok {
+			recType := g.varTypes[g.resolveAlias(baseId.Name)]
+			if fields, ok := g.recordFields[recType]; ok {
+				return fields[v.Field]
+			}
+		}
+	case UnaryExpr:
+		if v.Op == "NOT" {
+			return TypeBoolean
+		}
+		return g.typeOf(v.Right)
+	case CastExpr:
+		return v.TargetType
+	case BinaryExpr:
+		switch v.Op {
+		case "AND", "OR", "XOR", "=", "==", "/=", "!=", "<", "<=", ">", ">=":
+			return TypeBoolean
+		case "/":
+			return TypeReal
+		case "DIV", "MOD":
+			return TypeInteger
+		case "+", "-", "*":
+			lt := g.typeOf(v.Left)
+			rt := g.typeOf(v.Right)
+			if lt == TypeReal || rt == TypeReal {
+				return TypeReal
+			}
+			return lt
+		}
+	}
+	return ""
+}
+
 func (g *CodeGenerator) expr(e Expr) string {
 	switch v := e.(type) {
 	case LiteralExpr:
@@ -379,9 +435,16 @@ func (g *CodeGenerator) expr(e Expr) string {
 			op = "!="
 		}
 		left, right := g.expr(v.Left), g.expr(v.Right)
+		lt, rt := g.typeOf(v.Left), g.typeOf(v.Right)
 		if v.Op == "/" {
 			left = "float64(" + left + ")"
 			right = "float64(" + right + ")"
+		} else if op == "+" || op == "-" || op == "*" || op == "==" || op == "!=" || op == "<" || op == "<=" || op == ">" || op == ">=" {
+			if lt == TypeReal && rt == TypeInteger {
+				right = "float64(" + right + ")"
+			} else if lt == TypeInteger && rt == TypeReal {
+				left = "float64(" + left + ")"
+			}
 		}
 		return "(" + left + " " + op + " " + right + ")"
 	case CastExpr:

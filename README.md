@@ -137,6 +137,7 @@ internal/cli/            Implementasi perintah & argumen CLI
 internal/compiler/       Lexer, parser, AST, type checker, code generator, decompiler
 test/                    Seluruh file pengujian (unit, integration, dan round-trip tests)
 examples/                Contoh source pseudocode & tugas praktikum
+vscode-extension/        Ekstensi resmi VS Code untuk pseudocode (syntax highlight, snippets, commands)
 ```
 
 ## Repositori Materi Rujukan
@@ -147,5 +148,5 @@ examples/                Contoh source pseudocode & tugas praktikum
 # For Development
 ```bash
 git clone https://github.com/fkesa/pseugo-telkomuniversity
-cd pseugo-telkomuniversity && go build -o pseugo ./cmd/pseugo
+cd pseugo-telkomuniversity && go build -trimpath -ldflags="-s -w" -o pseugo ./cmd/pseugo
 ```

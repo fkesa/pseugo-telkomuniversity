@@ -186,7 +186,9 @@ func (d *decompiler) decompileProgram(fn *ast.FuncDecl) (string, error) {
 	}
 
 	var sb strings.Builder
-	sb.WriteString("program " + progName + "\n")
+	sb.WriteString("program ")
+	sb.WriteString(progName)
+	sb.WriteString("\n")
 	sb.WriteString("kamus\n")
 
 	// Emit types
@@ -196,11 +198,17 @@ func (d *decompiler) decompileProgram(fn *ast.FuncDecl) (string, error) {
 			continue
 		}
 		typeName := cleanIdent(ts.Name.Name)
-		sb.WriteString("    type " + typeName + " <\n")
+		sb.WriteString("    type ")
+		sb.WriteString(typeName)
+		sb.WriteString(" <\n")
 		for _, field := range st.Fields.List {
 			fType := d.goTypeToPseudo(field.Type)
 			for _, fName := range field.Names {
-				sb.WriteString("        " + cleanIdent(fName.Name) + " : " + fType + "\n")
+				sb.WriteString("        ")
+				sb.WriteString(cleanIdent(fName.Name))
+				sb.WriteString(" : ")
+				sb.WriteString(fType)
+				sb.WriteString("\n")
 				pCtx.recordFields[typeName+"."+cleanIdent(fName.Name)] = fType
 			}
 		}
@@ -220,7 +228,13 @@ func (d *decompiler) decompileProgram(fn *ast.FuncDecl) (string, error) {
 				cType = TypeInteger
 			}
 			valStr := pCtx.exprToPseudo(cVal)
-			sb.WriteString("    constant " + cName + " : " + cType + " <- " + valStr + "\n")
+			sb.WriteString("    constant ")
+			sb.WriteString(cName)
+			sb.WriteString(" : ")
+			sb.WriteString(cType)
+			sb.WriteString(" <- ")
+			sb.WriteString(valStr)
+			sb.WriteString("\n")
 		}
 	}
 
@@ -228,7 +242,11 @@ func (d *decompiler) decompileProgram(fn *ast.FuncDecl) (string, error) {
 	for _, typ := range pCtx.typeOrder {
 		names := pCtx.groupedVars[typ]
 		if len(names) > 0 {
-			sb.WriteString("    " + strings.Join(names, ", ") + " : " + typ + "\n")
+			sb.WriteString("    ")
+			sb.WriteString(strings.Join(names, ", "))
+			sb.WriteString(" : ")
+			sb.WriteString(typ)
+			sb.WriteString("\n")
 		}
 	}
 
@@ -238,7 +256,8 @@ func (d *decompiler) decompileProgram(fn *ast.FuncDecl) (string, error) {
 		for _, stmt := range fn.Body.List {
 			lines := pCtx.decompileStmt(stmt, 1)
 			for _, line := range lines {
-				sb.WriteString(line + "\n")
+				sb.WriteString(line)
+				sb.WriteString("\n")
 			}
 		}
 	}
@@ -460,6 +479,26 @@ func (d *decompiler) inferTypeFromExpr(expr ast.Expr, env map[string]string) str
 				return TypeBoolean
 			}
 		}
+	case *ast.SelectorExpr:
+		baseId, ok := e.X.(*ast.Ident)
+		if ok {
+			baseName := cleanIdent(baseId.Name)
+			recType := env[baseName]
+			fieldName := cleanIdent(e.Sel.Name)
+			for _, ts := range d.globalTypes {
+				if cleanIdent(ts.Name.Name) == recType || cleanIdent(ts.Name.Name) == baseName {
+					if st, ok := ts.Type.(*ast.StructType); ok {
+						for _, f := range st.Fields.List {
+							for _, fn := range f.Names {
+								if cleanIdent(fn.Name) == fieldName {
+									return d.goTypeToPseudo(f.Type)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 	return TypeInteger
 }
@@ -586,7 +625,13 @@ func (p *programContext) getExprType(e ast.Expr) string {
 	case *ast.SelectorExpr:
 		base := p.exprToPseudo(v.X)
 		field := cleanIdent(v.Sel.Name)
-		return p.recordFields[base+"."+field]
+		if t, ok := p.recordFields[base+"."+field]; ok {
+			return t
+		}
+		recType := p.varTypes[base]
+		if t, ok := p.recordFields[recType+"."+field]; ok {
+			return t
+		}
 	}
 	return ""
 }
