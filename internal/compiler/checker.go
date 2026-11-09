@@ -117,8 +117,9 @@ func isReservedWord(name string) bool {
 	words := []string{
     "program", "kamus", "algoritma", "endprogram", "constant", "type",
     "input", "output", "for", "while", "endwhile", "to", "downto", "do", "endfor",
-    "repeat", "until", // <-- Tambahkan ini
+    "repeat", "until",
     "if", "then", "elseif", "else", "endif",
+    "depend", "on", "enddepend", "case", "default",
     "div", "mod", "and", "or", "xor", "not", "integer", "int", "real", "float",
     "boolean", "bool", "string", "char", "true", "false", "benar", "salah",
 }
@@ -206,6 +207,20 @@ func (c *Checker) checkStatements(stmts []Stmt, env map[string]Symbol) {
 			if cond != TypeBoolean {
 				c.report(v.Pos, "until condition must be boolean, got %s", cond)
 			}
+		case SwitchStmt:
+			exprType := c.infer(v.Expr, env)
+			for _, cl := range v.Cases {
+				for _, val := range cl.Values {
+					valType := c.infer(val, env)
+					if !sameType(exprType, valType) && !(isNumericType(exprType) && isNumericType(valType)) {
+						c.report(cl.Pos, "case value type %s does not match switch expression type %s", valType, exprType)
+					}
+				}
+				c.checkStatements(cl.Body, copySymbols(env))
+			}
+			if len(v.Default) > 0 {
+				c.checkStatements(v.Default, copySymbols(env))
+			}
 		}
 	}
 }
@@ -265,6 +280,12 @@ func (c *Checker) infer(e Expr, env map[string]Symbol) string {
 				return TypeBoolean
 			}
 		}
+	case CastExpr:
+		fromType := c.infer(v.Expr, env)
+		if fromType == "<error>" {
+			return "<error>"
+		}
+		return v.TargetType
 	case FieldExpr:
 		return c.fieldType(v, env)
 	case IdentExpr:
@@ -345,6 +366,8 @@ func (c *Checker) isConstantExpr(e Expr, env map[string]Symbol) bool {
 		return ok && sym.Constant
 	case UnaryExpr:
 		return c.isConstantExpr(v.Right, env)
+	case CastExpr:
+		return c.isConstantExpr(v.Expr, env)
 	case BinaryExpr:
 		return c.isConstantExpr(v.Left, env) && c.isConstantExpr(v.Right, env)
 	default:

@@ -19,13 +19,20 @@ Untuk dokumentasi lengkap logika pseudocode, tipe data, operator, dan padanan si
 
 ## Cara Menjalankan (`pseugo`)
 
+Sebelum menjalankan perintah, kompilasi binary `pseugo` terlebih dahulu di root repositori:
+```bash
+# Build binary di root repositori
+go build -o pseugo ./cmd/pseugo       # Linux / macOS
+go build -o pseugo.exe ./cmd/pseugo   # Windows (PowerShell: .\pseugo)
+```
+
 ### 1. Konversi Pseudocode ke Golang
 ```bash
 # Simpan hasil Go ke file
-go run ./cmd/pseugo convert -to-golang -i examples/div_mod.pseudo -o build/div_mod.go
+./pseugo convert -to-golang -i examples/div_mod.pseudo -o build/div_mod.go
 
 # Atau cetak langsung ke stdout (tanpa -o)
-go run ./cmd/pseugo convert -to-golang -i examples/div_mod.pseudo
+./pseugo convert -to-golang -i examples/div_mod.pseudo
 
 # Jalankan kode Go yang dihasilkan
 go run ./build/div_mod.go
@@ -34,20 +41,20 @@ go run ./build/div_mod.go
 ### 2. Konversi Golang ke Pseudocode
 ```bash
 # Simpan hasil pseudocode ke file
-go run ./cmd/pseugo convert -to-pseu -i build/div_mod.go -o div_mod.pseudo
+./pseugo convert -to-pseu -i build/div_mod.go -o div_mod.pseudo
 
 # Atau cetak langsung ke stdout (tanpa -o)
-go run ./cmd/pseugo convert -to-pseu -i build/div_mod.go
+./pseugo convert -to-pseu -i build/div_mod.go
 ```
 
 ### 3. Typechecker Pseudocode (Validasi Semantik Tanpa Kompilasi)
 ```bash
-go run ./cmd/pseugo check examples/div_mod.pseudo
+./pseugo check examples/div_mod.pseudo
 ```
 
 ### 4. Tampilkan Token Lexer
 ```bash
-go run ./cmd/pseugo tokens examples/div_mod.pseudo
+./pseugo tokens examples/div_mod.pseudo
 ```
 
 ---
@@ -97,18 +104,23 @@ endprogram
 ```
 
 ### Rangkuman Logika & Fitur:
+- **Komentar**: Pascal `{ ... }`, baris tunggal `//`, dan blok `/* ... */`.
 - **Tipe data dasar**: `integer`/`int`, `real`/`float`, `boolean`/`bool`, `string`, dan `char`/`rune`.
 - **Tipe bentukan (Record)**: `type Nama < ... >` dan akses field record (`wt.jam`).
-- **Konstanta**: `constant nama : tipe <- nilai`.
+- **Konstanta**: `constant nama : tipe <- nilai` atau `constant nama : tipe = nilai`.
 - **Alias variabel**: `alias : original` (merujuk ke alokasi memori yang sama).
-- **Assignment**: `<-`.
+- **Assignment**: `<-` dan `=`.
+- **Postfix Increment / Decrement**: `x++` dan `x--`.
 - **Input / Output**: `input(...)` dan `output(...)`.
-- **Percabangan**: `if ... then ... elseif ... then ... else ... endif`.
+- **Percabangan**:
+  - `if ... then ... elseif ... then ... else ... endif`
+  - `depend on ... enddepend` / `end` (seleksi banyak nilai / switch-case)
 - **Perulangan**:
   - `for ... to ... do ... endfor` (inklusif maju)
   - `for ... downto ... do ... endfor` (inklusif mundur)
   - `while ... do ... endwhile`
   - `repeat ... until ...`
+- **Konversi Tipe (Type Casting)**: `int(pi)`, `real(n)`, `integer(...)`, `float(...)`.
 - **Operator aritmetika**: `+`, `-`, `*`, `/` (pembagian riil), `DIV` (pembagian bulat), `MOD` (modulo integer).
 - **Operator logika**: `NOT`, `AND`, `OR`, `XOR`.
 - **Operator perbandingan**: `=`, `==`, `/=`, `!=`, `<>`, `<`, `<=`, `>`, `>=`.
@@ -135,5 +147,5 @@ examples/                Contoh source pseudocode & tugas praktikum
 # For Development
 ```bash
 git clone https://github.com/fkesa/pseugo-telkomuniversity
-cd pseugo-telkomuniversity && go build -o .\build\pseugo.exe .\cmd\pseugo
+cd pseugo-telkomuniversity && go build -o pseugo ./cmd/pseugo
 ```

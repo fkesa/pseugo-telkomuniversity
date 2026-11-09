@@ -183,8 +183,8 @@ func (p *Parser) parseDecl() (Decl, error) {
 		if err != nil {
 			return nil, err
 		}
-		if !p.isOp("<-") {
-			return nil, p.errorf(p.current(), "expected '<-' in constant declaration")
+		if !p.isOp("<-") && !p.isOp("=") && !p.isSymbol("=") {
+			return nil, p.errorf(p.current(), "expected '<-' or '=' in constant declaration")
 		}
 		p.advance()
 		value, err := p.parseExpression(1)
@@ -352,13 +352,42 @@ func (p *Parser) parseStatement() (Stmt, error) {
 	if p.isWord("repeat") {
 		return p.parseRepeat()
 	}
+	if p.isWord("depend") {
+		return p.parseDepend()
+	}
 	if t.Kind == TokenIdent {
 		target, err := p.parsePostfixIdent()
 		if err != nil {
 			return nil, err
 		}
-		if !p.isOp("<-") {
-			return nil, p.errorf(p.current(), "expected '<-' after assignment target")
+		if p.isOp("++") {
+			p.advance()
+			return AssignStmt{
+				Target: target,
+				Value: BinaryExpr{
+					Left:  target,
+					Op:    "+",
+					Right: LiteralExpr{Kind: TokenInt, Value: "1", Pos: t.Pos},
+					Pos:   t.Pos,
+				},
+				Pos: t.Pos,
+			}, nil
+		}
+		if p.isOp("--") {
+			p.advance()
+			return AssignStmt{
+				Target: target,
+				Value: BinaryExpr{
+					Left:  target,
+					Op:    "-",
+					Right: LiteralExpr{Kind: TokenInt, Value: "1", Pos: t.Pos},
+					Pos:   t.Pos,
+				},
+				Pos: t.Pos,
+			}, nil
+		}
+		if !p.isOp("<-") && !p.isOp("=") && !p.isSymbol("=") {
+			return nil, p.errorf(p.current(), "expected '<-' or '=' after assignment target")
 		}
 		p.advance()
 		value, err := p.parseExpression(1)
@@ -367,7 +396,119 @@ func (p *Parser) parseStatement() (Stmt, error) {
 		}
 		return AssignStmt{Target: target, Value: value, Pos: t.Pos}, nil
 	}
-	return nil, p.errorf(t, "expected assignment, input, output, if, for, or while statement")
+	return nil, p.errorf(t, "expected assignment, input, output, if, for, while, repeat, or depend statement")
+}
+
+func (p *Parser) parseDepend() (Stmt, error) {
+	kw := p.advance() // depend
+	if _, err := p.expectWord("on"); err != nil {
+		return nil, err
+	}
+	expr, err := p.parseExpression(1)
+	if err != nil {
+		return nil, err
+	}
+	if err = p.expectLineEnd(); err != nil {
+		return nil, err
+	}
+	p.skipSeparators()
+
+	var cases []CaseClause
+	var defaultStmts []Stmt
+
+	for !p.isWord("enddepend") && !p.isWord("end") && p.current().Kind != TokenEOF {
+		if p.isWord("default") {
+			p.advance() // default
+			if _, err := p.expectSymbol(":"); err != nil {
+				return nil, err
+			}
+			if err = p.expectLineEnd(); err != nil {
+				return nil, err
+			}
+			p.skipSeparators()
+
+			for !p.isCaseClauseStart() && p.current().Kind != TokenEOF {
+				s, err := p.parseStatement()
+				if err != nil {
+					return nil, err
+				}
+				defaultStmts = append(defaultStmts, s)
+				if err = p.expectLineEnd(); err != nil {
+					return nil, err
+				}
+				p.skipSeparators()
+			}
+			continue
+		}
+
+		// Case clause
+		casePos := p.current().Pos
+		if p.isWord("case") {
+			p.advance()
+		}
+
+		val, err := p.parseExpression(1)
+		if err != nil {
+			return nil, err
+		}
+		values := []Expr{val}
+		for p.isSymbol(",") {
+			p.advance()
+			nextVal, err := p.parseExpression(1)
+			if err != nil {
+				return nil, err
+			}
+			values = append(values, nextVal)
+		}
+
+		if _, err := p.expectSymbol(":"); err != nil {
+			return nil, err
+		}
+		if err = p.expectLineEnd(); err != nil {
+			return nil, err
+		}
+		p.skipSeparators()
+
+		var body []Stmt
+		for !p.isCaseClauseStart() && p.current().Kind != TokenEOF {
+			s, err := p.parseStatement()
+			if err != nil {
+				return nil, err
+			}
+			body = append(body, s)
+			if err = p.expectLineEnd(); err != nil {
+				return nil, err
+			}
+			p.skipSeparators()
+		}
+
+		cases = append(cases, CaseClause{Values: values, Body: body, Pos: casePos})
+	}
+
+	if p.isWord("enddepend") || p.isWord("end") {
+		p.advance()
+	} else {
+		return nil, p.errorf(p.current(), "expected 'enddepend' or 'end' to close depend statement")
+	}
+
+	return SwitchStmt{Expr: expr, Cases: cases, Default: defaultStmts, Pos: kw.Pos}, nil
+}
+
+func (p *Parser) isCaseClauseStart() bool {
+	if p.isWord("case") || p.isWord("default") || p.isWord("enddepend") || p.isWord("end") {
+		return true
+	}
+	// Look ahead on the current line for a colon ':'
+	for i := p.index; i < len(p.tokens); i++ {
+		tok := p.tokens[i]
+		if tok.Kind == TokenNewline || (tok.Kind == TokenSymbol && tok.Text == ";") || tok.Kind == TokenEOF {
+			break
+		}
+		if tok.Kind == TokenSymbol && tok.Text == ":" {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Parser) parseIf() (Stmt, error) {
@@ -468,8 +609,8 @@ func (p *Parser) parseFor() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !p.isOp("<-") {
-		return nil, p.errorf(p.current(), "expected '<-' after for counter")
+	if !p.isOp("<-") && !p.isOp("=") && !p.isSymbol("=") {
+		return nil, p.errorf(p.current(), "expected '<-' or '=' after for counter")
 	}
 	p.advance()
 	start, err := p.parseExpression(1)
@@ -600,6 +741,19 @@ func (p *Parser) parsePrefix() (Expr, error) {
 		p.advance()
 		return LiteralExpr{Kind: t.Kind, Value: t.Text, Pos: t.Pos}, nil
 	case TokenIdent:
+		lower := strings.ToLower(t.Text)
+		if (lower == "int" || lower == "integer" || lower == "real" || lower == "float" || lower == "string" || lower == "char") && p.index+1 < len(p.tokens) && p.tokens[p.index+1].Kind == TokenSymbol && p.tokens[p.index+1].Text == "(" {
+			p.advance() // ident
+			p.advance() // (
+			inner, err := p.parseExpression(1)
+			if err != nil {
+				return nil, err
+			}
+			if _, err := p.expectSymbol(")"); err != nil {
+				return nil, err
+			}
+			return CastExpr{TargetType: normalizeType(lower), Expr: inner, Pos: t.Pos}, nil
+		}
 		if strings.EqualFold(t.Text, "true") || strings.EqualFold(t.Text, "false") || strings.EqualFold(t.Text, "benar") || strings.EqualFold(t.Text, "salah") {
 			p.advance()
 			return LiteralExpr{Kind: TokenIdent, Value: strings.ToLower(t.Text), Pos: t.Pos}, nil

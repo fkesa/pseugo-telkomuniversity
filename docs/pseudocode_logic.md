@@ -9,10 +9,12 @@ Dokumen ini berisi spesifikasi lengkap mengenai sintaks, logika, tipe data, oper
 2. [Tipe Data](#2-tipe-data)
 3. [Deklarasi (`kamus`)](#3-deklarasi-kamus)
 4. [Logika & Kontrol Alur (`algoritma`)](#4-logika--kontrol-alur-algoritma)
-   - [Assignment (Penugasan)](#assignment-penugasan)
+   - [Komentar (Comments)](#komentar-comments)
+   - [Assignment & Increment/Decrement](#assignment--incrementdecrement)
    - [Input dan Output](#input-dan-output)
-   - [Percabangan (If - Then - Elseif - Else - Endif)](#percabangan-if---then---elseif---else---endif)
+   - [Percabangan (If & Depend On)](#percabangan-if---then---elseif---else---endif)
    - [Perulangan (For, While, Repeat-Until)](#perulangan-looping)
+   - [Type Casting (Konversi Tipe)](#type-casting-konversi-tipe)
 5. [Operator yang Didukung](#5-operator-yang-didukung)
    - [Aritmetika](#operator-aritmetika)
    - [Perbandingan / Relasional](#operator-perbandingan--relasional)
@@ -110,14 +112,36 @@ kamus
 
 ## 4. Logika & Kontrol Alur (`algoritma`)
 
-### Assignment (Penugasan)
-Penugasan menggunakan operator panah kiri `<-`:
+### Komentar (Comments)
+Compiler mendukung 3 gaya penulisan komentar sesuai materi praktikum:
+1. **Gaya Pascal / Notasi Algoritmik**: `{ komentar di dalam kurung kurawal }`
+2. **Gaya Baris Tunggal**: `// komentar sampai akhir baris`
+3. **Gaya Blok Multi-baris**: `/* komentar multi-baris */`
+
+```text
+{ Modul Praktikum Alpro }
+program HitungNilai
+kamus
+    // deklarasi variabel
+    nilai : integer
+    /* batas kelulusan
+       minimum */
+    constant BATAS : integer = 75
+algoritma
+    ...
+endprogram
+```
+
+### Assignment & Increment/Decrement
+Penugasan dapat menggunakan operator panah kiri `<-` maupun simbol sama dengan `=`:
 ```text
 algoritma
     x <- 10
-    total <- total + x
+    total = total + x
+    c++      // ekuivalen dengan c <- c + 1
+    c--      // ekuivalen dengan c <- c - 1
     p1.x <- 5.0
-    mhs.lulus <- true
+    mhs.lulus = true
 ```
 
 ### Input dan Output
@@ -131,9 +155,9 @@ algoritma
     output("Hasil penjumlahan:", x + y)
 ```
 
-### Percabangan (If - Then - Elseif - Else - Endif)
+### Percabangan (If & Depend On)
 
-Mendukung 3 pola percabangan:
+Mendukung 4 pola percabangan:
 
 #### 1. Percabangan Tunggal (`if - then - endif`)
 ```text
@@ -163,6 +187,26 @@ else
     indeks <- "E"
 endif
 ```
+
+#### 4. Percabangan Seleksi Nilai (`depend on ... enddepend`)
+Digunakan untuk mencocokkan suatu ekspresi dengan beberapa label nilai (ekuivalen dengan `switch-case` di Go/C):
+```text
+depend on indeks
+    'A':
+        batasA <- 100
+        batasB <- 75
+    'B':
+        batasA <- 75
+        batasB <- 65
+    case 'C':
+        batasA <- 65
+        batasB <- 50
+    default:
+        batasA <- 50
+        batasB <- 0
+enddepend
+```
+> Blok percabangan dapat ditutup menggunakan kata kunci `enddepend` atau `end`. Label klausa dapat berupa nilai langsung (`1:`), daftar nilai (`2, 3:`), diawali kata kunci `case` (`case 'C':`), atau klausa fallback `default:`.
 
 ### Perulangan (Looping)
 
@@ -202,11 +246,23 @@ repeat
 until x = 0
 ```
 
+### Type Casting (Konversi Tipe)
+Compiler mendukung fungsi konversi tipe data eksplisit seperti yang dipelajari pada Modul 3 Praktikum:
+- `int(...)` atau `integer(...)`: Mengonversi nilai desimal (`real`) menjadi bilangan bulat (`integer`).
+- `real(...)` atau `float(...)`: Mengonversi nilai bilangan bulat (`integer`) menjadi nilai desimal (`real`).
+
+```text
+algoritma
+    pi <- 3.14
+    n <- int(pi)         // n bernilai 3
+    desimal <- real(10)  // desimal bernilai 10.0
+```
+
 ---
 
 ## 5. Operator yang Didukung
 
-### Operator Aritmetika
+### Operator Aritmetika & Pencacah
 | Operator | Fungsi | Tipe Operand | Tipe Hasil |
 | :---: | :--- | :--- | :--- |
 | `+` | Penjumlahan | `integer` / `real` | Sesuai operand (promosi ke `real` jika salah satu `real`) |
@@ -215,6 +271,8 @@ until x = 0
 | `/` | Pembagian Riil | `integer` / `real` | `real` (selalu menghasilkan riil) |
 | `DIV` | Pembagian Bulat | `integer` saja | `integer` |
 | `MOD` | Sisa Bagi (Modulo) | `integer` saja | `integer` |
+| `++` | Postfix Increment (+1) | `integer` saja | `integer` |
+| `--` | Postfix Decrement (-1) | `integer` saja | `integer` |
 
 ### Operator Perbandingan / Relasional
 | Operator | Fungsi |
@@ -257,6 +315,8 @@ Compiler menyediakan decompiler Go -> Pseudocode yang mengurai AST Go (`go/parse
 | `fmt.Scan(&a, &b)` | `input(a, b)` |
 | `fmt.Println("Total:", sum)` | `output("Total:", sum)` |
 | `if cond { ... } else { ... }` | `if cond then ... else ... endif` |
+| `switch x { case 1: ... default: ... }` | `depend on x ... enddepend` |
+| `switch { case a > b: ... }` | `if a > b then ... endif` (tagless switch) |
 | `for i := 1; i <= n; i++` | `for i <- 1 to n do ... endfor` |
 | `for i := n; i >= 1; i--` | `for i <- n downto 1 do ... endfor` |
 | `for cond { ... }` | `while cond do ... endwhile` |
@@ -284,10 +344,10 @@ CLI menyediakan mode sub-perintah (`convert`, `check`, dan `tokens`):
 ### Konversi Pseudocode ke Go
 ```bash
 # Simpan hasil Go ke file
-go run ./cmd/pseugo convert -to-golang -i examples/div_mod.pseudo -o build/div_mod.go
+./pseugo convert -to-golang -i examples/div_mod.pseudo -o build/div_mod.go
 
 # Cetak hasil Go ke terminal (stdout)
-go run ./cmd/pseugo convert -to-golang -i examples/div_mod.pseudo
+./pseugo convert -to-golang -i examples/div_mod.pseudo
 
 # Jalankan kode Go yang dihasilkan
 go run ./build/div_mod.go
@@ -296,22 +356,22 @@ go run ./build/div_mod.go
 ### Konversi Go ke Pseudocode
 ```bash
 # Simpan hasil pseudocode ke file
-go run ./cmd/pseugo convert -to-pseu -i build/div_mod.go -o div_mod.pseudo
+./pseugo convert -to-pseu -i build/div_mod.go -o div_mod.pseudo
 
 # Cetak hasil pseudocode ke terminal (stdout)
-go run ./cmd/pseugo convert -to-pseu -i build/div_mod.go
+./pseugo convert -to-pseu -i build/div_mod.go
 ```
 
 ### Menjalankan Typechecker Saja (Validasi Tanpa Kompilasi)
 Memeriksa apakah sintaks dan tipe data pseudocode valid sebelum dikonversi:
 
 ```bash
-go run ./cmd/pseugo check examples/div_mod.pseudo
+./pseugo check examples/div_mod.pseudo
 ```
 
 ### Melihat Token Lexer
 ```bash
-go run ./cmd/pseugo tokens examples/div_mod.pseudo
+./pseugo tokens examples/div_mod.pseudo
 ```
 
 ---

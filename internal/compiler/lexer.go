@@ -151,6 +151,33 @@ func (l *Lexer) NextToken() (Token, error) {
 		switch {
 		case ch == 0:
 			return Token{Kind: TokenEOF, Pos: pos}, nil
+		case ch == '{':
+			l.advance()
+			for l.current() != 0 && l.current() != '}' {
+				l.advance()
+			}
+			if l.current() == '}' {
+				l.advance()
+			}
+			continue
+		case ch == '/' && l.peek(1) == '/':
+			l.advance()
+			l.advance()
+			for l.current() != 0 && l.current() != '\n' {
+				l.advance()
+			}
+			continue
+		case ch == '/' && l.peek(1) == '*':
+			l.advance()
+			l.advance()
+			for l.current() != 0 && !(l.current() == '*' && l.peek(1) == '/') {
+				l.advance()
+			}
+			if l.current() == '*' {
+				l.advance()
+				l.advance()
+			}
+			continue
 		case ch == '\n':
 			l.advance()
 			return Token{Kind: TokenNewline, Text: "\\n", Pos: pos}, nil
@@ -166,6 +193,14 @@ func (l *Lexer) NextToken() (Token, error) {
 			l.advance()
 			l.advance()
 			return Token{Kind: TokenOp, Text: "<-", Pos: pos}, nil
+		case ch == '+' && l.peek(1) == '+':
+			l.advance()
+			l.advance()
+			return Token{Kind: TokenOp, Text: "++", Pos: pos}, nil
+		case ch == '-' && l.peek(1) == '-':
+			l.advance()
+			l.advance()
+			return Token{Kind: TokenOp, Text: "--", Pos: pos}, nil
 		case (ch == '<' || ch == '>' || ch == '=') && l.peek(1) == '=':
 			text := string([]rune{ch, '='})
 			l.advance()

@@ -373,6 +373,14 @@ func (p *programContext) collectLocalDecls(stmts []ast.Stmt) {
 					p.collectLocalDecls([]ast.Stmt{ifElse})
 				}
 			}
+		case *ast.SwitchStmt:
+			if s.Body != nil {
+				for _, stmt := range s.Body.List {
+					if cc, ok := stmt.(*ast.CaseClause); ok {
+						p.collectLocalDecls(cc.Body)
+					}
+				}
+			}
 		case *ast.BlockStmt:
 			p.collectLocalDecls(s.List)
 		}
@@ -558,6 +566,9 @@ func (p *programContext) decompileStmt(stmt ast.Stmt, level int) []string {
 	case *ast.ForStmt:
 		return p.decompileFor(s, level)
 
+	case *ast.SwitchStmt:
+		return p.decompileSwitch(s, level)
+
 	case *ast.BlockStmt:
 		var lines []string
 		for _, child := range s.List {
@@ -666,6 +677,82 @@ func (p *programContext) decompileIf(s *ast.IfStmt, level int) []string {
 	}
 
 	lines = append(lines, ind+"endif")
+	return lines
+}
+
+func (p *programContext) decompileSwitch(s *ast.SwitchStmt, level int) []string {
+	ind := p.indent(level)
+	var lines []string
+
+	// Tagless switch: switch { case cond1: ... default: ... }
+	if s.Tag == nil {
+		if s.Body == nil || len(s.Body.List) == 0 {
+			return nil
+		}
+		first := true
+		for _, stmt := range s.Body.List {
+			cc, ok := stmt.(*ast.CaseClause)
+			if !ok {
+				continue
+			}
+			if len(cc.List) > 0 {
+				var conds []string
+				for _, c := range cc.List {
+					conds = append(conds, p.exprToPseudo(c))
+				}
+				condStr := strings.Join(conds, " OR ")
+				if first {
+					lines = append(lines, ind+"if "+condStr+" then")
+					first = false
+				} else {
+					lines = append(lines, ind+"elseif "+condStr+" then")
+				}
+				for _, b := range cc.Body {
+					lines = append(lines, p.decompileStmt(b, level+1)...)
+				}
+			} else {
+				// default
+				lines = append(lines, ind+"else")
+				for _, b := range cc.Body {
+					lines = append(lines, p.decompileStmt(b, level+1)...)
+				}
+			}
+		}
+		if !first {
+			lines = append(lines, ind+"endif")
+		}
+		return lines
+	}
+
+	// Tagged switch: depend on expr
+	exprStr := p.exprToPseudo(s.Tag)
+	lines = append(lines, ind+"depend on "+exprStr)
+
+	if s.Body != nil {
+		for _, stmt := range s.Body.List {
+			cc, ok := stmt.(*ast.CaseClause)
+			if !ok {
+				continue
+			}
+			if len(cc.List) > 0 {
+				var vals []string
+				for _, v := range cc.List {
+					vals = append(vals, p.exprToPseudo(v))
+				}
+				lines = append(lines, p.indent(level+1)+strings.Join(vals, ", ")+":")
+				for _, b := range cc.Body {
+					lines = append(lines, p.decompileStmt(b, level+2)...)
+				}
+			} else {
+				lines = append(lines, p.indent(level+1)+"default:")
+				for _, b := range cc.Body {
+					lines = append(lines, p.decompileStmt(b, level+2)...)
+				}
+			}
+		}
+	}
+
+	lines = append(lines, ind+"enddepend")
 	return lines
 }
 

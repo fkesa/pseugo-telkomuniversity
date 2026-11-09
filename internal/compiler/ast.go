@@ -136,3 +136,26 @@ type RepeatStmt struct {
 }
 
 func (RepeatStmt) isStmt() {}
+
+type CaseClause struct {
+	Values []Expr
+	Body   []Stmt
+	Pos    Position
+}
+
+type SwitchStmt struct {
+	Expr    Expr
+	Cases   []CaseClause
+	Default []Stmt
+	Pos     Position
+}
+
+func (SwitchStmt) isStmt() {}
+
+type CastExpr struct {
+	TargetType string
+	Expr       Expr
+	Pos        Position
+}
+
+func (CastExpr) isExpr() {}

@@ -213,7 +213,15 @@ func (g *CodeGenerator) scanRuntimeNeeds(s Stmt) {
 		for _, x := range v.Body {
 			g.scanRuntimeNeeds(x)
 		}
-	
+	case SwitchStmt:
+		for _, cl := range v.Cases {
+			for _, x := range cl.Body {
+				g.scanRuntimeNeeds(x)
+			}
+		}
+		for _, x := range v.Default {
+			g.scanRuntimeNeeds(x)
+		}
 	}
 }
 
@@ -300,7 +308,30 @@ func (g *CodeGenerator) stmt(s Stmt) {
 		g.indent--
 		g.line("}")
 		g.indent--
-		g.line("}")	
+		g.line("}")
+	case SwitchStmt:
+		g.line("switch " + g.expr(v.Expr) + " {")
+		for _, cl := range v.Cases {
+			var vals []string
+			for _, val := range cl.Values {
+				vals = append(vals, g.expr(val))
+			}
+			g.line("case " + strings.Join(vals, ", ") + ":")
+			g.indent++
+			for _, x := range cl.Body {
+				g.stmt(x)
+			}
+			g.indent--
+		}
+		if len(v.Default) > 0 {
+			g.line("default:")
+			g.indent++
+			for _, x := range v.Default {
+				g.stmt(x)
+			}
+			g.indent--
+		}
+		g.line("}")
 	}
 }
 
@@ -353,6 +384,8 @@ func (g *CodeGenerator) expr(e Expr) string {
 			right = "float64(" + right + ")"
 		}
 		return "(" + left + " " + op + " " + right + ")"
+	case CastExpr:
+		return goType(v.TargetType) + "(" + g.expr(v.Expr) + ")"
 	}
 	return "/* invalid expression */"
 }
