@@ -1,0 +1,144 @@
+{
+  "Program Template": {
+    "prefix": "prog",
+    "body": [
+      "program ${1:NamaProgram}",
+      "kamus",
+      "    ${2:// deklarasi variabel}",
+      "algoritma",
+      "    ${0}",
+      "endprogram"
+    ],
+    "description": "Kerangka lengkap program pseudocode"
+  },
+  "Kamus Block": {
+    "prefix": "kamus",
+    "body": [
+      "kamus",
+      "    ${0}"
+    ],
+    "description": "Blok deklarasi kamus"
+  },
+  "Algoritma Block": {
+    "prefix": "algoritma",
+    "body": [
+      "algoritma",
+      "    ${0}"
+    ],
+    "description": "Blok eksekusi algoritma"
+  },
+  "Type Declaration": {
+    "prefix": "type",
+    "body": [
+      "type ${1:NamaRecord} <",
+      "    ${2:field1} : ${3:integer}",
+      "    ${4:field2} : ${5:real}",
+      ">"
+    ],
+    "description": "Deklarasi tipe bentukan record/struct"
+  },
+  "Constant Declaration": {
+    "prefix": "const",
+    "body": [
+      "constant ${1:NAMA} : ${2:integer} <- ${3:0}"
+    ],
+    "description": "Deklarasi nilai konstanta"
+  },
+  "If Then Endif": {
+    "prefix": "if",
+    "body": [
+      "if ${1:kondisi} then",
+      "    ${0}",
+      "endif"
+    ],
+    "description": "Percabangan tunggal if-then-endif"
+  },
+  "If Else Endif": {
+    "prefix": "ifelse",
+    "body": [
+      "if ${1:kondisi} then",
+      "    ${2}",
+      "else",
+      "    ${0}",
+      "endif"
+    ],
+    "description": "Percabangan ganda if-then-else-endif"
+  },
+  "If ElseIf Else Endif": {
+    "prefix": "ifelseif",
+    "body": [
+      "if ${1:kondisi1} then",
+      "    ${2}",
+      "elseif ${3:kondisi2} then",
+      "    ${4}",
+      "else",
+      "    ${0}",
+      "endif"
+    ],
+    "description": "Percabangan majemuk if-elseif-else-endif"
+  },
+  "Depend On (Switch)": {
+    "prefix": "depend",
+    "body": [
+      "depend on ${1:ekspresi}",
+      "    ${2:nilai_1}:",
+      "        ${3}",
+      "    ${4:nilai_2}:",
+      "        ${5}",
+      "    default:",
+      "        ${0}",
+      "end"
+    ],
+    "description": "Percabangan seleksi nilai depend on ... end"
+  },
+  "For Loop (To)": {
+    "prefix": "for",
+    "body": [
+      "for ${1:i} <- ${2:1} to ${3:n} do",
+      "    ${0}",
+      "endfor"
+    ],
+    "description": "Perulangan pencacah naik (to)"
+  },
+  "For Loop (Downto)": {
+    "prefix": "fordown",
+    "body": [
+      "for ${1:i} <- ${2:n} downto ${3:1} do",
+      "    ${0}",
+      "endfor"
+    ],
+    "description": "Perulangan pencacah turun (downto)"
+  },
+  "While Loop": {
+    "prefix": "while",
+    "body": [
+      "while ${1:kondisi} do",
+      "    ${0}",
+      "endwhile"
+    ],
+    "description": "Perulangan periksa awal while-do"
+  },
+  "Repeat Until": {
+    "prefix": "repeat",
+    "body": [
+      "repeat",
+      "    ${0}",
+      "until ${1:kondisi}"
+    ],
+    "description": "Perulangan periksa akhir repeat-until"
+  },
+  "Input": {
+    "prefix": "input",
+    "body": [
+      "input(${1:var})"
+    ],
+    "description": "Instruksi pembacaan input"
+  },
+  "Output": {
+    "prefix": "output",
+    "body": [
+      "output(${1:var})"
+    ],
+    "description": "Instruksi penampilan output"
+  }
+}

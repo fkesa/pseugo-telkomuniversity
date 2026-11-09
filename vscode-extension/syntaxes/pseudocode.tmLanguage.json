@@ -1,0 +1,213 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Pseudocode",
+  "scopeName": "source.pseudocode",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#booleans" },
+    { "include": "#program-declaration" },
+    { "include": "#type-declaration" },
+    { "include": "#constant-declaration" },
+    { "include": "#structure-keywords" },
+    { "include": "#conditional-keywords" },
+    { "include": "#loop-keywords" },
+    { "include": "#storage-keywords" },
+    { "include": "#primitive-types" },
+    { "include": "#builtins" },
+    { "include": "#operators" },
+    { "include": "#fields" },
+    { "include": "#variables" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.pseudocode",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.c.pseudocode",
+          "begin": "/\\*",
+          "end": "\\*/"
+        },
+        {
+          "name": "comment.block.curly.pseudocode",
+          "begin": "\\{",
+          "end": "\\}"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.pseudocode",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.pseudocode",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.pseudocode",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.pseudocode",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.float.pseudocode",
+          "match": "\\b[0-9]+\\.[0-9]+\\b"
+        },
+        {
+          "name": "constant.numeric.integer.pseudocode",
+          "match": "\\b[0-9]+\\b"
+        }
+      ]
+    },
+    "booleans": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.pseudocode",
+          "match": "(?i)\\b(true|false|benar|salah)\\b"
+        }
+      ]
+    },
+    "program-declaration": {
+      "match": "(?i)\\b(program)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+      "captures": {
+        "1": { "name": "keyword.control.structure.pseudocode" },
+        "2": { "name": "entity.name.function.program.pseudocode" }
+      }
+    },
+    "type-declaration": {
+      "match": "(?i)\\b(type)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+      "captures": {
+        "1": { "name": "storage.modifier.pseudocode" },
+        "2": { "name": "entity.name.type.class.pseudocode" }
+      }
+    },
+    "constant-declaration": {
+      "match": "(?i)\\b(constant)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+      "captures": {
+        "1": { "name": "storage.modifier.pseudocode" },
+        "2": { "name": "variable.other.constant.pseudocode" }
+      }
+    },
+    "structure-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.structure.pseudocode",
+          "match": "(?i)\\b(program|endprogram|kamus|algoritma)\\b"
+        }
+      ]
+    },
+    "conditional-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.conditional.pseudocode",
+          "match": "(?i)\\b(if|then|else\\s+if|elseif|else|endif|depend|on|enddepend|end|case|default)\\b"
+        }
+      ]
+    },
+    "loop-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.repeat.pseudocode",
+          "match": "(?i)\\b(for|to|downto|do|endfor|while|endwhile|repeat|until)\\b"
+        }
+      ]
+    },
+    "storage-keywords": {
+      "patterns": [
+        {
+          "name": "storage.modifier.pseudocode",
+          "match": "(?i)\\b(constant|type)\\b"
+        }
+      ]
+    },
+    "primitive-types": {
+      "patterns": [
+        {
+          "name": "support.type.primitive.pseudocode",
+          "match": "(?i)\\b(integer|int|real|float|boolean|bool|string|char|rune)\\b"
+        }
+      ]
+    },
+    "builtins": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.pseudocode",
+          "match": "(?i)\\b(input|output)\\b"
+        },
+        {
+          "name": "support.function.cast.pseudocode",
+          "match": "(?i)\\b(int|integer|real|float)\\s*(?=\\()"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.assignment.arrow.pseudocode",
+          "match": "<-"
+        },
+        {
+          "name": "keyword.operator.assignment.pseudocode",
+          "match": "(?<![=<>!/])=(?![=])"
+        },
+        {
+          "name": "keyword.operator.arithmetic.word.pseudocode",
+          "match": "(?i)\\b(DIV|MOD)\\b"
+        },
+        {
+          "name": "keyword.operator.arithmetic.symbol.pseudocode",
+          "match": "(\\+\\+|--|\\+|-|\\*|/)"
+        },
+        {
+          "name": "keyword.operator.logical.word.pseudocode",
+          "match": "(?i)\\b(AND|OR|XOR|NOT)\\b"
+        },
+        {
+          "name": "keyword.operator.logical.symbol.pseudocode",
+          "match": "(&&|\\|\\||!)"
+        },
+        {
+          "name": "keyword.operator.comparison.pseudocode",
+          "match": "(<=|>=|/=|!=|<>|==|<|>)"
+        }
+      ]
+    },
+    "fields": {
+      "patterns": [
+        {
+          "match": "(\\.)([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "punctuation.separator.period.pseudocode" },
+            "2": { "name": "variable.other.property.pseudocode" }
+          }
+        }
+      ]
+    },
+    "variables": {
+      "patterns": [
+        {
+          "name": "variable.other.readwrite.pseudocode",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        }
+      ]
+    }
+  }
+}

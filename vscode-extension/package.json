@@ -1,0 +1,84 @@
+{
+  "name": "pseugo-pseudocode",
+  "displayName": "Pseudocode (Telkom University / pseugo)",
+  "description": "Dukungan sintaks, penyorotan kode, snippet, dan integrasi compiler pseugo untuk perkuliahan Algoritma & Pemrograman Telkom University.",
+  "version": "1.0.0",
+  "publisher": "alpro-telkom",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:pseudocode"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "pseudocode",
+        "aliases": [
+          "Pseudocode",
+          "pseudocode",
+          "pseudo"
+        ],
+        "extensions": [
+          ".pseudo",
+          ".pseudocode"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "pseudocode",
+        "scopeName": "source.pseudocode",
+        "path": "./syntaxes/pseudocode.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "pseudocode",
+        "path": "./snippets/pseudocode.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "pseugo.check",
+        "title": "Pseugo: Check Pseudocode (Typecheck)",
+        "category": "Pseugo"
+      },
+      {
+        "command": "pseugo.convertToGolang",
+        "title": "Pseugo: Convert to Golang",
+        "category": "Pseugo"
+      },
+      {
+        "command": "pseugo.runGolang",
+        "title": "Pseugo: Convert & Run with Go",
+        "category": "Pseugo"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "pseugo.check",
+          "when": "resourceLangId == pseudocode",
+          "group": "pseugo@1"
+        },
+        {
+          "command": "pseugo.convertToGolang",
+          "when": "resourceLangId == pseudocode",
+          "group": "pseugo@2"
+        },
+        {
+          "command": "pseugo.runGolang",
+          "when": "resourceLangId == pseudocode",
+          "group": "pseugo@3"
+        }
+      ]
+    }
+  }
+}
