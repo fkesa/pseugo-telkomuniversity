@@ -24,6 +24,6 @@
   ],
   "indentationRules": {
     "increaseIndentPattern": "^\\s*(program\\b|kamus\\b|algoritma\\b|if\\b.*\\bthen\\b|else\\b|elseif\\b.*\\bthen\\b|else\\s+if\\b.*\\bthen\\b|for\\b.*\\bdo\\b|while\\b.*\\bdo\\b|repeat\\b|depend\\s+on\\b.*|type\\b.*<|default:|(case\\s+)?[^:]+:)\\s*$",
-    "decreaseIndentPattern": "^\\s*(endprogram\\b|algoritma\\b|endif\\b|else\\b|elseif\\b|else\\s+if\\b|endfor\\b|endwhile\\b|until\\b|enddepend\\b|end\\b|>)\\s*$"
+    "decreaseIndentPattern": "^\\s*(endprogram\\b|algoritma\\b|endif\\b|else\\b|elseif\\b|else\\s+if\\b|endfor\\b|endwhile\\b|until\\b|end\\b|>)\\s*$"
   }
 }

@@ -310,7 +310,11 @@ func (g *CodeGenerator) stmt(s Stmt) {
 		g.indent--
 		g.line("}")
 	case SwitchStmt:
-		g.line("switch " + g.expr(v.Expr) + " {")
+		if v.Expr == nil {
+			g.line("switch {")
+		} else {
+			g.line("switch " + g.expr(v.Expr) + " {")
+		}
 		for _, cl := range v.Cases {
 			var vals []string
 			for _, val := range cl.Values {
@@ -332,6 +336,12 @@ func (g *CodeGenerator) stmt(s Stmt) {
 			g.indent--
 		}
 		g.line("}")
+	case CallStmt:
+		args := make([]string, 0, len(v.Args))
+		for _, arg := range v.Args {
+			args = append(args, g.expr(arg))
+		}
+		g.line(goIdent(v.Name) + "(" + strings.Join(args, ", ") + ")")
 	}
 }
 

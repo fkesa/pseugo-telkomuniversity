@@ -292,7 +292,9 @@ const KEYWORD_DOCS = {
   'endprogram': '**endprogram**: Kata kunci penutup program pseudocode.',
   'input': '**input(...)**: Membaca satu atau beberapa masukan dari pengguna (dipisahkan whitespace).',
   'output': '**output(...)**: Menampilkan teks, variabel, atau hasil ekspresi ke layar pengguna.',
-  'depend': '**depend on <ekspresi> ... end**: Percabangan seleksi nilai (switch-case).\nLabel kasus ditulis langsung nilainya (misal `1:`, `\'A\':`) dan ditutup `end` atau `enddepend`.',
+  'depend': '**depend on [<ekspresi>] ... end**: Percabangan seleksi nilai atau kondisi boolean (switch-case).\nLabel kasus dan `default:` ditulis sejajar dengan `depend on` (misal `1:`, `\'A\':`, atau `n >= 85:`), aksi di dalamnya 1 indent, dan ditutup hanya dengan `end`.',
+  'end': '**end**: Kata kunci penutup blok percabangan `depend on`.',
+  'default': '**default:**: Cabang alternatif pada `depend on` yang dieksekusi jika tidak ada kasus lain yang cocok.',
   'repeat': '**repeat ... until <kondisi>**: Perulangan dengan evaluasi di akhir.\nDijalankan minimal 1 kali, berhenti saat kondisi bernilai `true`.',
   'while': '**while <kondisi> do ... endwhile**: Perulangan dengan evaluasi di awal.\nBerjalan selama kondisi bernilai `true`.',
   'for': '**for <var> <- <awal> to|downto <akhir> do ... endfor**: Perulangan pencacah inklusif menaik (`to`) atau menurun (`downto`).',
@@ -655,7 +657,7 @@ function activate(context) {
       channel.show(true);
       channel.appendLine(`[Pseugo] Mengonversi ${filePath} ke ${defaultOut}...`);
 
-      execFile(bin, ['convert', '-to-golang', '-i', filePath, '-o', defaultOut], (err, stdout, stderr) => {
+      execFile(bin, ['convert', '-to-golang', filePath, defaultOut], (err, stdout, stderr) => {
         if (err) {
           channel.appendLine(stderr || stdout || err.message);
           vscode.window.showErrorMessage(`[Pseugo] Konversi gagal! Periksa tab Output.`);
@@ -680,7 +682,7 @@ function activate(context) {
       const defaultOut = filePath.replace(/\.(pseudo|pseudocode|txt)$/i, '') + '.go';
       const bin = findPseugoBinary(filePath);
 
-      execFile(bin, ['convert', '-to-golang', '-i', filePath, '-o', defaultOut], (err, stdout, stderr) => {
+      execFile(bin, ['convert', '-to-golang', filePath, defaultOut], (err, stdout, stderr) => {
         if (err) {
           const ch = getOutputChannel();
           ch.show(true);

@@ -393,6 +393,9 @@ func (p *programContext) collectLocalDecls(stmts []ast.Stmt) {
 				}
 			}
 		case *ast.SwitchStmt:
+			if s.Init != nil {
+				p.collectLocalDecls([]ast.Stmt{s.Init})
+			}
 			if s.Body != nil {
 				for _, stmt := range s.Body.List {
 					if cc, ok := stmt.(*ast.CaseClause); ok {
@@ -637,6 +640,14 @@ func (p *programContext) getExprType(e ast.Expr) string {
 }
 
 func (p *programContext) decompileCall(call *ast.CallExpr, ind string) []string {
+	if ident, ok := call.Fun.(*ast.Ident); ok {
+		var args []string
+		for _, arg := range call.Args {
+			args = append(args, p.exprToPseudo(arg))
+		}
+		return []string{ind + cleanIdent(ident.Name) + "(" + strings.Join(args, ", ") + ")"}
+	}
+
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
 		return nil
@@ -729,49 +740,28 @@ func (p *programContext) decompileSwitch(s *ast.SwitchStmt, level int) []string 
 	ind := p.indent(level)
 	var lines []string
 
+	if s.Init != nil {
+		lines = append(lines, p.decompileStmt(s.Init, level)...)
+	}
+
+	var caseValueOverrides map[*ast.CaseClause][]string
+
 	// Tagless switch: switch { case cond1: ... default: ... }
 	if s.Tag == nil {
 		if s.Body == nil || len(s.Body.List) == 0 {
-			return nil
+			return lines
 		}
-		first := true
-		for _, stmt := range s.Body.List {
-			cc, ok := stmt.(*ast.CaseClause)
-			if !ok {
-				continue
-			}
-			if len(cc.List) > 0 {
-				var conds []string
-				for _, c := range cc.List {
-					conds = append(conds, p.exprToPseudo(c))
-				}
-				condStr := strings.Join(conds, " OR ")
-				if first {
-					lines = append(lines, ind+"if "+condStr+" then")
-					first = false
-				} else {
-					lines = append(lines, ind+"elseif "+condStr+" then")
-				}
-				for _, b := range cc.Body {
-					lines = append(lines, p.decompileStmt(b, level+1)...)
-				}
-			} else {
-				// default
-				lines = append(lines, ind+"else")
-				for _, b := range cc.Body {
-					lines = append(lines, p.decompileStmt(b, level+1)...)
-				}
-			}
+		if subj, overrides, ok := p.extractCommonSwitchSubject(s.Body); ok {
+			lines = append(lines, ind+"depend on "+subj)
+			caseValueOverrides = overrides
+		} else {
+			lines = append(lines, ind+"depend on")
 		}
-		if !first {
-			lines = append(lines, ind+"endif")
-		}
-		return lines
+	} else {
+		// Tagged switch: depend on expr
+		exprStr := p.exprToPseudo(s.Tag)
+		lines = append(lines, ind+"depend on "+exprStr)
 	}
-
-	// Tagged switch: depend on expr
-	exprStr := p.exprToPseudo(s.Tag)
-	lines = append(lines, ind+"depend on "+exprStr)
 
 	if s.Body != nil {
 		for _, stmt := range s.Body.List {
@@ -781,24 +771,137 @@ func (p *programContext) decompileSwitch(s *ast.SwitchStmt, level int) []string 
 			}
 			if len(cc.List) > 0 {
 				var vals []string
-				for _, v := range cc.List {
-					vals = append(vals, p.exprToPseudo(v))
+				if override, ok := caseValueOverrides[cc]; ok {
+					vals = override
+				} else {
+					for _, v := range cc.List {
+						vals = append(vals, p.exprToPseudo(v))
+					}
 				}
-				lines = append(lines, p.indent(level+1)+strings.Join(vals, ", ")+":")
+				lines = append(lines, ind+strings.Join(vals, ", ")+":")
 				for _, b := range cc.Body {
-					lines = append(lines, p.decompileStmt(b, level+2)...)
+					lines = append(lines, p.decompileStmt(b, level+1)...)
 				}
 			} else {
-				lines = append(lines, p.indent(level+1)+"default:")
+				lines = append(lines, ind+"default:")
 				for _, b := range cc.Body {
-					lines = append(lines, p.decompileStmt(b, level+2)...)
+					lines = append(lines, p.decompileStmt(b, level+1)...)
 				}
 			}
 		}
 	}
 
-	lines = append(lines, ind+"enddepend")
+	lines = append(lines, ind+"end")
 	return lines
+}
+
+func unwrapParen(expr ast.Expr) ast.Expr {
+	for {
+		pe, ok := expr.(*ast.ParenExpr)
+		if !ok {
+			return expr
+		}
+		expr = pe.X
+	}
+}
+
+func flattenDisjunction(expr ast.Expr) []ast.Expr {
+	expr = unwrapParen(expr)
+	if bin, ok := expr.(*ast.BinaryExpr); ok && bin.Op == token.LOR {
+		return append(flattenDisjunction(bin.X), flattenDisjunction(bin.Y)...)
+	}
+	return []ast.Expr{expr}
+}
+
+func isSimpleSubjectExpr(expr ast.Expr) bool {
+	switch unwrapParen(expr).(type) {
+	case *ast.Ident, *ast.SelectorExpr:
+		return true
+	default:
+		return false
+	}
+}
+
+// extractCommonSwitchSubject checks if every non-default case in a tagless switch
+// compares the same subject variable/field with '==', e.g. `case jenis == "A":`.
+// If so, it returns the common subject and the extracted case values per clause.
+func (p *programContext) extractCommonSwitchSubject(body *ast.BlockStmt) (string, map[*ast.CaseClause][]string, bool) {
+	type eqPair struct {
+		left  ast.Expr
+		right ast.Expr
+	}
+	type clausePairs struct {
+		clause *ast.CaseClause
+		pairs  []eqPair
+	}
+
+	var nonDefault []clausePairs
+	for _, stmt := range body.List {
+		cc, ok := stmt.(*ast.CaseClause)
+		if !ok || len(cc.List) == 0 {
+			continue
+		}
+		var pairs []eqPair
+		for _, expr := range cc.List {
+			for _, atom := range flattenDisjunction(expr) {
+				atom = unwrapParen(atom)
+				bin, ok := atom.(*ast.BinaryExpr)
+				if !ok || bin.Op != token.EQL {
+					return "", nil, false
+				}
+				pairs = append(pairs, eqPair{left: bin.X, right: bin.Y})
+			}
+		}
+		if len(pairs) == 0 {
+			return "", nil, false
+		}
+		nonDefault = append(nonDefault, clausePairs{clause: cc, pairs: pairs})
+	}
+
+	if len(nonDefault) == 0 {
+		return "", nil, false
+	}
+
+	firstPair := nonDefault[0].pairs[0]
+	var candidates []string
+	if isSimpleSubjectExpr(firstPair.left) {
+		candidates = append(candidates, p.exprToPseudo(firstPair.left))
+	}
+	if isSimpleSubjectExpr(firstPair.right) {
+		rs := p.exprToPseudo(firstPair.right)
+		if len(candidates) == 0 || candidates[0] != rs {
+			candidates = append(candidates, rs)
+		}
+	}
+
+	for _, cand := range candidates {
+		overrides := make(map[*ast.CaseClause][]string, len(nonDefault))
+		matchedAll := true
+		for _, cp := range nonDefault {
+			vals := make([]string, 0, len(cp.pairs))
+			for _, pair := range cp.pairs {
+				ls := p.exprToPseudo(pair.left)
+				rs := p.exprToPseudo(pair.right)
+				if ls == cand {
+					vals = append(vals, rs)
+				} else if rs == cand {
+					vals = append(vals, ls)
+				} else {
+					matchedAll = false
+					break
+				}
+			}
+			if !matchedAll {
+				break
+			}
+			overrides[cp.clause] = vals
+		}
+		if matchedAll {
+			return cand, overrides, true
+		}
+	}
+
+	return "", nil, false
 }
 
 func (p *programContext) decompileFor(s *ast.ForStmt, level int) []string {

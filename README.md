@@ -26,33 +26,47 @@ go build -o pseugo ./cmd/pseugo       # Linux / macOS
 go build -o pseugo.exe ./cmd/pseugo   # Windows (PowerShell: .\pseugo)
 ```
 
-### 1. Konversi Pseudocode ke Golang
+### 1. Jalankan Pseudocode Langsung
 ```bash
-# Simpan hasil Go ke file
-./pseugo convert -to-golang -i examples/div_mod.pseudo -o build/div_mod.go
+# Compile sementara dan langsung eksekusi pseudocode (mendukung input interaktif)
+./pseugo run examples/div_mod.pseudo
+```
 
-# Atau cetak langsung ke stdout (tanpa -o)
-./pseugo convert -to-golang -i examples/div_mod.pseudo
+### 2. Konversi Pseudocode ke Golang
+```bash
+# Simpan hasil Go ke file (posisi: <input> [output])
+./pseugo convert -to-golang examples/div_mod.pseudo build/div_mod.go
+
+# Atau langsung tanpa flag mode (otomatis terdeteksi dari ekstensi .pseudo)
+./pseugo convert examples/div_mod.pseudo build/div_mod.go
+./pseugo examples/div_mod.pseudo build/div_mod.go
+
+# Atau cetak langsung ke stdout (tanpa argumen output)
+./pseugo convert -to-golang examples/div_mod.pseudo
 
 # Jalankan kode Go yang dihasilkan
 go run ./build/div_mod.go
 ```
 
-### 2. Konversi Golang ke Pseudocode
+### 3. Konversi Golang ke Pseudocode
 ```bash
-# Simpan hasil pseudocode ke file
-./pseugo convert -to-pseu -i build/div_mod.go -o div_mod.pseudo
+# Simpan hasil pseudocode ke file (posisi: <input> [output])
+./pseugo convert -to-pseu build/div_mod.go div_mod.pseudo
 
-# Atau cetak langsung ke stdout (tanpa -o)
-./pseugo convert -to-pseu -i build/div_mod.go
+# Atau langsung tanpa flag mode (otomatis terdeteksi dari ekstensi .go)
+./pseugo convert build/div_mod.go div_mod.pseudo
+./pseugo build/div_mod.go div_mod.pseudo
+
+# Atau cetak langsung ke stdout (tanpa argumen output)
+./pseugo convert -to-pseu build/div_mod.go
 ```
 
-### 3. Typechecker Pseudocode (Validasi Semantik Tanpa Kompilasi)
+### 4. Typechecker Pseudocode (Validasi Semantik Tanpa Kompilasi)
 ```bash
 ./pseugo check examples/div_mod.pseudo
 ```
 
-### 4. Tampilkan Token Lexer
+### 5. Tampilkan Token Lexer
 ```bash
 ./pseugo tokens examples/div_mod.pseudo
 ```
@@ -86,6 +100,16 @@ algoritma
     output("Di bawah batas")
   endif
 
+  // Percabangan Seleksi Nilai (Switch-Case)
+  depend on nilai
+  10:
+    output("Sepuluh")
+  20, 30:
+    output("Dua puluh atau tiga puluh")
+  default:
+    output("Lainnya")
+  end
+
   // Perulangan For (Maju dan Mundur)
   for i <- 1 to 5 do
     nilai <- nilai + i
@@ -114,7 +138,7 @@ endprogram
 - **Input / Output**: `input(...)` dan `output(...)`.
 - **Percabangan**:
   - `if ... then ... elseif ... then ... else ... endif`
-  - `depend on ... enddepend` / `end` (seleksi banyak nilai / switch-case)
+  - `depend on <ekspresi> ... end` dan `depend on ... end` tanpa ekspresi (seleksi banyak nilai / kondisi boolean, ekuivalen `switch-case`; label case sejajar dengan `depend on`, aksi 1 indent, ditutup `end`)
 - **Perulangan**:
   - `for ... to ... do ... endfor` (inklusif maju)
   - `for ... downto ... do ... endfor` (inklusif mundur)
@@ -122,9 +146,9 @@ endprogram
   - `repeat ... until ...`
 - **Konversi Tipe (Type Casting)**: `int(pi)`, `real(n)`, `integer(...)`, `float(...)`.
 - **Operator aritmetika**: `+`, `-`, `*`, `/` (pembagian riil), `DIV` (pembagian bulat), `MOD` (modulo integer).
-- **Operator logika**: `NOT`, `AND`, `OR`, `XOR`.
+- **Operator logika**: `NOT`, `AND` (`&&`), `OR` (`||`), `XOR`.
 - **Operator perbandingan**: `=`, `==`, `/=`, `!=`, `<>`, `<`, `<=`, `>`, `>=`.
-- **Dukungan multi-program** dalam satu file.
+- **Dukungan multi-program & pemanggilan subprogram** dalam satu file (misal `jeniskendaraan()` di dalam perulangan `for`).
 
 ---
 

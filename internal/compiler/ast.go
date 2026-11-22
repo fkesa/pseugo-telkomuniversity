@@ -152,6 +152,14 @@ type SwitchStmt struct {
 
 func (SwitchStmt) isStmt() {}
 
+type CallStmt struct {
+	Name string
+	Args []Expr
+	Pos  Position
+}
+
+func (CallStmt) isStmt() {}
+
 type CastExpr struct {
 	TargetType string
 	Expr       Expr

@@ -366,6 +366,27 @@ func (p *Parser) parseStatement() (Stmt, error) {
 		if err != nil {
 			return nil, err
 		}
+		if ident, ok := target.(IdentExpr); ok && p.isSymbol("(") {
+			p.advance() // (
+			var args []Expr
+			if !p.isSymbol(")") {
+				for {
+					arg, err := p.parseExpression(1)
+					if err != nil {
+						return nil, err
+					}
+					args = append(args, arg)
+					if !p.isSymbol(",") {
+						break
+					}
+					p.advance()
+				}
+			}
+			if _, err := p.expectSymbol(")"); err != nil {
+				return nil, err
+			}
+			return CallStmt{Name: ident.Name, Args: args, Pos: t.Pos}, nil
+		}
 		if p.isOp("++") {
 			p.advance()
 			return AssignStmt{
@@ -410,9 +431,13 @@ func (p *Parser) parseDepend() (Stmt, error) {
 	if _, err := p.expectWord("on"); err != nil {
 		return nil, err
 	}
-	expr, err := p.parseExpression(1)
-	if err != nil {
-		return nil, err
+	var expr Expr
+	var err error
+	if p.current().Kind != TokenNewline && !p.isSymbol(";") && p.current().Kind != TokenEOF {
+		expr, err = p.parseExpression(1)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if err = p.expectLineEnd(); err != nil {
 		return nil, err
@@ -422,7 +447,7 @@ func (p *Parser) parseDepend() (Stmt, error) {
 	var cases []CaseClause
 	var defaultStmts []Stmt
 
-	for !p.isWord("enddepend") && !p.isWord("end") && p.current().Kind != TokenEOF {
+	for !p.isWord("end") && p.current().Kind != TokenEOF {
 		if p.isWord("default") {
 			p.advance() // default
 			if _, err := p.expectSymbol(":"); err != nil {
@@ -491,17 +516,17 @@ func (p *Parser) parseDepend() (Stmt, error) {
 		cases = append(cases, CaseClause{Values: values, Body: body, Pos: casePos})
 	}
 
-	if p.isWord("enddepend") || p.isWord("end") {
+	if p.isWord("end") {
 		p.advance()
 	} else {
-		return nil, p.errorf(p.current(), "expected 'enddepend' or 'end' to close depend statement")
+		return nil, p.errorf(p.current(), "expected 'end' to close depend statement")
 	}
 
 	return SwitchStmt{Expr: expr, Cases: cases, Default: defaultStmts, Pos: kw.Pos}, nil
 }
 
 func (p *Parser) isCaseClauseStart() bool {
-	if p.isWord("case") || p.isWord("default") || p.isWord("enddepend") || p.isWord("end") {
+	if p.isWord("case") || p.isWord("default") || p.isWord("end") {
 		return true
 	}
 	// Look ahead on the current line for a colon ':'

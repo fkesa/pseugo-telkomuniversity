@@ -15,7 +15,9 @@ Menyediakan pengalaman coding modern setara **Pylance / gopls** dengan strict ty
   - Variabel belum dideklarasikan (*undeclared variable*)
   - Ketidakcocokan tipe penugasan (*assignment type mismatch*)
   - Operasi tidak valid (misal `DIV` pada tipe `real`)
-  - Kondisi percabangan/perulangan non-boolean
+  - Kondisi percabangan/perulangan (termasuk kasus pada tagless `depend on`) non-boolean
+  - Ketidakcocokan tipe label kasus pada `depend on <ekspresi>`
+  - Pemanggilan program/prosedur yang belum dideklarasikan
   - Duplikasi nama variabel atau tipe record
   - Akses field record yang tidak terdaftar
 
@@ -23,7 +25,7 @@ Menyediakan pengalaman coding modern setara **Pylance / gopls** dengan strict ty
 - Mengarahkan kursor (*hover*) pada variabel atau konstanta akan menampilkan tipe datanya (misal `(variable) total : integer`, `(constant) PI : real = 3.14`).
 - Mengarahkan kursor pada variabel alias menampilkan target variabel aslinya.
 - Mengarahkan kursor pada tipe record menampilkan struktur field lengkapnya.
-- Mengarahkan kursor pada operator/keyword (`DIV`, `MOD`, `depend on`, `repeat`, `for`, `int()`, dll) menampilkan dokumentasi dan contoh penggunaannya.
+- Mengarahkan kursor pada operator/keyword (`DIV`, `MOD`, `depend`, `end`, `default`, `repeat`, `for`, `int()`, dll) menampilkan dokumentasi dan contoh penggunaannya.
 
 ### 3. Autocompletion / IntelliSense Cerdas
 - Menyarankan kata kunci pseudocode, tipe data primitif, dan fungsi bawaan (`input`, `output`, `int`, `real`).

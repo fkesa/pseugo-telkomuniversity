@@ -1,10 +1,11 @@
 package cli
 
 import (
-	"flag"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -13,6 +14,11 @@ import (
 
 // Run executes the CLI with the provided arguments and standard I/O streams.
 func Run(args []string, stdout, stderr io.Writer) int {
+	return RunWithIO(args, os.Stdin, stdout, stderr)
+}
+
+// RunWithIO executes the CLI with explicit stdin, stdout, and stderr streams.
+func RunWithIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		printUsage(stderr)
 		return 2
@@ -20,25 +26,24 @@ func Run(args []string, stdout, stderr io.Writer) int {
 
 	cmd := args[0]
 
-	// Handle legacy flags if first arg starts with "-"
-	if strings.HasPrefix(cmd, "-") {
-		return runLegacy(args, stdout, stderr)
-	}
-
 	switch strings.ToLower(cmd) {
+	case "run":
+		return runPseudo(args[1:], stdin, stdout, stderr)
 	case "convert":
 		return runConvert(args[1:], stdout, stderr)
 	case "check":
 		return runCheck(args[1:], stdout, stderr)
 	case "tokens":
 		return runTokens(args[1:], stdout, stderr)
-	case "help", "--help", "-h":
+	case "help", "--help", "-help", "-h":
 		printUsage(stdout)
 		return 0
 	default:
-		// Check if user passed a file directly as first argument: pseugo <file>
-		if _, err := os.Stat(cmd); err == nil {
-			return runAuto(cmd, args[1:], stdout, stderr)
+		// Check if user passed a file directly as first argument: pseugo <input> [output]
+		if !strings.HasPrefix(cmd, "-") {
+			if _, err := os.Stat(cmd); err == nil {
+				return runAuto(cmd, args[1:], stdout, stderr)
+			}
 		}
 		fmt.Fprintf(stderr, "error: unknown command %q\n\n", cmd)
 		printUsage(stderr)
@@ -46,41 +51,110 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 }
 
-func runConvert(args []string, stdout, stderr io.Writer) int {
-	fs := flag.NewFlagSet("convert", flag.ContinueOnError)
-	fs.SetOutput(stderr)
+func runPseudo(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	var positional []string
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			switch strings.ToLower(arg) {
+			case "-h", "-help", "--help":
+				printUsage(stdout)
+				return 0
+			default:
+				fmt.Fprintf(stderr, "error: unknown flag %q\n", arg)
+				return 2
+			}
+		}
+		positional = append(positional, arg)
+	}
 
+	if len(positional) == 0 {
+		fmt.Fprintln(stderr, "error: input file is required (usage: pseugo run <file.pseudo>)")
+		return 2
+	}
+	if len(positional) > 1 {
+		fmt.Fprintln(stderr, "error: too many arguments (usage: pseugo run <file.pseudo>)")
+		return 2
+	}
+
+	input := positional[0]
+	sourceBytes, err := os.ReadFile(input)
+	if err != nil {
+		fmt.Fprintf(stderr, "error reading %s: %v\n", input, err)
+		return 1
+	}
+
+	result, err := compiler.Compile(string(sourceBytes))
+	if err != nil {
+		fmt.Fprintf(stderr, "compile error: %v\n", err)
+		return 1
+	}
+
+	tmpDir, err := os.MkdirTemp("", "pseugo-run-*")
+	if err != nil {
+		fmt.Fprintf(stderr, "error creating temp directory: %v\n", err)
+		return 1
+	}
+	defer os.RemoveAll(tmpDir)
+
+	goFile := filepath.Join(tmpDir, "main.go")
+	if err := os.WriteFile(goFile, []byte(result.GoSource), 0644); err != nil {
+		fmt.Fprintf(stderr, "error writing temporary Go file: %v\n", err)
+		return 1
+	}
+
+	cmd := exec.Command("go", "run", goFile)
+	cmd.Stdin = stdin
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	if err := cmd.Run(); err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return exitErr.ExitCode()
+		}
+		fmt.Fprintf(stderr, "error running generated Go program: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
+func runConvert(args []string, stdout, stderr io.Writer) int {
 	var toGolang bool
 	var toPseu bool
-	var input string
-	var output string
+	var positional []string
 
-	fs.BoolVar(&toGolang, "to-golang", false, "convert Pseudocode to Go")
-	fs.BoolVar(&toGolang, "to-go", false, "alias for -to-golang")
-	fs.BoolVar(&toPseu, "to-pseu", false, "convert Go to Pseudocode")
-	fs.BoolVar(&toPseu, "to-pseudo", false, "alias for -to-pseu")
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			switch strings.ToLower(arg) {
+			case "-to-golang", "--to-golang", "-to-go", "--to-go":
+				toGolang = true
+			case "-to-pseu", "--to-pseu", "-to-pseudo", "--to-pseudo":
+				toPseu = true
+			case "-h", "-help", "--help":
+				printUsage(stdout)
+				return 0
+			default:
+				fmt.Fprintf(stderr, "error: unknown flag %q\n", arg)
+				return 2
+			}
+			continue
+		}
+		positional = append(positional, arg)
+	}
 
-	fs.StringVar(&input, "i", "", "input file path")
-	fs.StringVar(&input, "in", "", "alias for -i")
-
-	fs.StringVar(&output, "o", "", "output file path (default: stdout)")
-	fs.StringVar(&output, "out", "", "alias for -o")
-
-	if err := fs.Parse(args); err != nil {
+	if len(positional) == 0 {
+		fmt.Fprintln(stderr, "error: input file is required (usage: pseugo convert [-to-golang|-to-pseu] <input> [output])")
+		return 2
+	}
+	if len(positional) > 2 {
+		fmt.Fprintln(stderr, "error: too many arguments (usage: pseugo convert [-to-golang|-to-pseu] <input> [output])")
 		return 2
 	}
 
-	// Positional arguments fallback
-	if input == "" && len(fs.Args()) > 0 {
-		input = fs.Args()[0]
-	}
-	if output == "" && len(fs.Args()) > 1 {
-		output = fs.Args()[1]
-	}
-
-	if input == "" {
-		fmt.Fprintln(stderr, "error: input file is required (use -i <file>)")
-		return 2
+	input := positional[0]
+	output := ""
+	if len(positional) == 2 {
+		output = positional[1]
 	}
 
 	if toGolang && toPseu {
@@ -91,11 +165,12 @@ func runConvert(args []string, stdout, stderr io.Writer) int {
 	// Auto-detect direction if neither flag is set
 	if !toGolang && !toPseu {
 		ext := strings.ToLower(filepath.Ext(input))
-		if ext == ".go" {
+		switch ext {
+		case ".go":
 			toPseu = true
-		} else if ext == ".pseudo" {
+		case ".pseudo", ".pseudocode":
 			toGolang = true
-		} else {
+		default:
 			fmt.Fprintln(stderr, "error: please specify conversion mode (-to-golang or -to-pseu)")
 			return 2
 		}
@@ -158,26 +233,31 @@ func runConvert(args []string, stdout, stderr io.Writer) int {
 }
 
 func runCheck(args []string, stdout, stderr io.Writer) int {
-	fs := flag.NewFlagSet("check", flag.ContinueOnError)
-	fs.SetOutput(stderr)
+	var positional []string
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			switch strings.ToLower(arg) {
+			case "-h", "-help", "--help":
+				printUsage(stdout)
+				return 0
+			default:
+				fmt.Fprintf(stderr, "error: unknown flag %q\n", arg)
+				return 2
+			}
+		}
+		positional = append(positional, arg)
+	}
 
-	var input string
-	fs.StringVar(&input, "i", "", "input file path")
-	fs.StringVar(&input, "in", "", "alias for -i")
-
-	if err := fs.Parse(args); err != nil {
+	if len(positional) == 0 {
+		fmt.Fprintln(stderr, "error: file to check is required (usage: pseugo check <file.pseudo>)")
+		return 2
+	}
+	if len(positional) > 1 {
+		fmt.Fprintln(stderr, "error: too many arguments (usage: pseugo check <file.pseudo>)")
 		return 2
 	}
 
-	if input == "" && len(fs.Args()) > 0 {
-		input = fs.Args()[0]
-	}
-
-	if input == "" {
-		fmt.Fprintln(stderr, "error: file to check is required (e.g. pseugo check <file.pseudo>)")
-		return 2
-	}
-
+	input := positional[0]
 	sourceBytes, err := os.ReadFile(input)
 	if err != nil {
 		fmt.Fprintf(stderr, "error reading %s: %v\n", input, err)
@@ -195,26 +275,31 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 }
 
 func runTokens(args []string, stdout, stderr io.Writer) int {
-	fs := flag.NewFlagSet("tokens", flag.ContinueOnError)
-	fs.SetOutput(stderr)
+	var positional []string
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			switch strings.ToLower(arg) {
+			case "-h", "-help", "--help":
+				printUsage(stdout)
+				return 0
+			default:
+				fmt.Fprintf(stderr, "error: unknown flag %q\n", arg)
+				return 2
+			}
+		}
+		positional = append(positional, arg)
+	}
 
-	var input string
-	fs.StringVar(&input, "i", "", "input file path")
-	fs.StringVar(&input, "in", "", "alias for -i")
-
-	if err := fs.Parse(args); err != nil {
+	if len(positional) == 0 {
+		fmt.Fprintln(stderr, "error: input file is required (usage: pseugo tokens <file.pseudo>)")
+		return 2
+	}
+	if len(positional) > 1 {
+		fmt.Fprintln(stderr, "error: too many arguments (usage: pseugo tokens <file.pseudo>)")
 		return 2
 	}
 
-	if input == "" && len(fs.Args()) > 0 {
-		input = fs.Args()[0]
-	}
-
-	if input == "" {
-		fmt.Fprintln(stderr, "error: input file is required (e.g. pseugo tokens <file.pseudo>)")
-		return 2
-	}
-
+	input := positional[0]
 	sourceBytes, err := os.ReadFile(input)
 	if err != nil {
 		fmt.Fprintf(stderr, "error reading %s: %v\n", input, err)
@@ -236,68 +321,34 @@ func runTokens(args []string, stdout, stderr io.Writer) int {
 func runAuto(file string, extraArgs []string, stdout, stderr io.Writer) int {
 	ext := strings.ToLower(filepath.Ext(file))
 	if ext == ".go" {
-		return runConvert(append([]string{"-to-pseu", "-i", file}, extraArgs...), stdout, stderr)
+		return runConvert(append([]string{"-to-pseu", file}, extraArgs...), stdout, stderr)
 	}
-	return runConvert(append([]string{"-to-golang", "-i", file}, extraArgs...), stdout, stderr)
-}
-
-func runLegacy(args []string, stdout, stderr io.Writer) int {
-	fs := flag.NewFlagSet("legacy", flag.ContinueOnError)
-	fs.SetOutput(stderr)
-
-	input := fs.String("in", "", "path to input source file (.pseudo or .go)")
-	output := fs.String("out", "", "path for output file (default: stdout)")
-	checkOnly := fs.Bool("check", false, "run typechecker on pseudocode")
-	showTokens := fs.Bool("tokens", false, "print lexer tokens")
-	reverse := fs.Bool("reverse", false, "convert Go source code to pseudocode")
-	toPseudo := fs.Bool("to-pseudo", false, "alias for -reverse")
-
-	if err := fs.Parse(args); err != nil {
-		return 2
-	}
-
-	if *input == "" {
-		printUsage(stderr)
-		return 2
-	}
-
-	if *showTokens {
-		return runTokens([]string{"-i", *input}, stdout, stderr)
-	}
-	if *checkOnly {
-		return runCheck([]string{"-i", *input}, stdout, stderr)
-	}
-
-	convertArgs := []string{"-i", *input}
-	if *output != "" {
-		convertArgs = append(convertArgs, "-o", *output)
-	}
-	if *reverse || *toPseudo {
-		convertArgs = append(convertArgs, "-to-pseu")
-	}
-	return runConvert(convertArgs, stdout, stderr)
+	return runConvert(append([]string{"-to-golang", file}, extraArgs...), stdout, stderr)
 }
 
 func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "pseugo - Pseudocode Compiler & Go Transpiler (Alpro Telkom University)")
 	fmt.Fprintln(w, "\nUsage:")
-	fmt.Fprintln(w, "  pseugo convert -to-golang -i <input.pseudo> [-o <output.go>]")
-	fmt.Fprintln(w, "  pseugo convert -to-pseu -i <input.go> [-o <output.pseudo>]")
+	fmt.Fprintln(w, "  pseugo run <file.pseudo>")
+	fmt.Fprintln(w, "  pseugo convert [-to-golang|-to-pseu] <input> [output]")
+	fmt.Fprintln(w, "  pseugo <input> [output]")
 	fmt.Fprintln(w, "  pseugo check <file.pseudo>")
 	fmt.Fprintln(w, "  pseugo tokens <file.pseudo>")
 	fmt.Fprintln(w, "\nCommands:")
-	fmt.Fprintln(w, "  convert    Convert between Pseudocode and Golang")
+	fmt.Fprintln(w, "  run        Compile and execute a pseudocode file directly")
+	fmt.Fprintln(w, "  convert    Convert between Pseudocode and Golang (direction auto-detected from extension)")
 	fmt.Fprintln(w, "  check      Run static typechecker on pseudocode without code generation")
 	fmt.Fprintln(w, "  tokens     Print lexer tokens of pseudocode")
 	fmt.Fprintln(w, "  help       Show this help message")
 	fmt.Fprintln(w, "\nConvert Options:")
 	fmt.Fprintln(w, "  -to-golang, -to-go     Convert pseudocode to Go")
 	fmt.Fprintln(w, "  -to-pseu, -to-pseudo   Convert Go to pseudocode")
-	fmt.Fprintln(w, "  -i, -in string         Input file path")
-	fmt.Fprintln(w, "  -o, -out string        Output file path (default: stdout)")
 	fmt.Fprintln(w, "\nExamples:")
-	fmt.Fprintln(w, "  pseugo convert -to-golang -i examples/div_mod.pseudo -o build/div_mod.go")
-	fmt.Fprintln(w, "  pseugo convert -to-pseu -i build/div_mod.go -o div_mod.pseudo")
+	fmt.Fprintln(w, "  pseugo run examples/div_mod.pseudo")
+	fmt.Fprintln(w, "  pseugo convert examples/div_mod.pseudo build/div_mod.go")
+	fmt.Fprintln(w, "  pseugo convert -to-golang examples/div_mod.pseudo build/div_mod.go")
+	fmt.Fprintln(w, "  pseugo convert -to-pseu build/div_mod.go div_mod.pseudo")
+	fmt.Fprintln(w, "  pseugo build/div_mod.go")
 	fmt.Fprintln(w, "  pseugo check examples/div_mod.pseudo")
 	fmt.Fprintln(w, "  pseugo tokens examples/div_mod.pseudo")
 }

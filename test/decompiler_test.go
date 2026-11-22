@@ -270,3 +270,85 @@ func TestDecompileModul09Tugas(t *testing.T) {
 		t.Fatalf("re-compiling decompiled modul09_tugas failed: %v\nDecompiled:\n%s", err, decompiled)
 	}
 }
+
+func TestDecompileForLoopCallingSubprogramsAndSwitch(t *testing.T) {
+	goSrc := `package main
+
+import "fmt"
+
+func jeniskendaraan() {
+	var jenis, kendaraan string
+	fmt.Scan(&jenis)
+	kendaraan = ""
+	switch {
+	case jenis == "A":
+		kendaraan = "Mobil"
+	case jenis == "B":
+		kendaraan = "Motor"
+	default:
+		kendaraan = "Jenis kendaraan tidak tersedia"
+	}
+	fmt.Println(kendaraan)
+}
+
+func predikatnilai() {
+	var n int
+	var nilai string
+	fmt.Scan(&n)
+	nilai = ""
+	switch {
+	case n >= 85 && n <= 100:
+		nilai = "A"
+	case n >= 75 && n <= 84:
+		nilai = "B"
+	}
+	fmt.Println(nilai)
+}
+
+func main() {
+	for i := 1; i <= 5; i++ {
+		jeniskendaraan()
+	}
+	for i := 1; i <= 5; i++ {
+		predikatnilai()
+	}
+}
+`
+	pseudo, err := compiler.DecompileGo(goSrc)
+	if err != nil {
+		t.Fatalf("DecompileGo failed: %v", err)
+	}
+
+	if strings.Contains(pseudo, "if ") || strings.Contains(pseudo, "elseif ") {
+		t.Errorf("expected switches to decompile to depend on, not if/elseif, got:\n%s", pseudo)
+	}
+	if !strings.Contains(pseudo, "depend on jenis") {
+		t.Errorf("expected depend on jenis, got:\n%s", pseudo)
+	}
+	if !strings.Contains(pseudo, "depend on\n") || !strings.Contains(pseudo, "n >= 85 AND n <= 100:") {
+		t.Errorf("expected tagless depend on for predikatnilai, got:\n%s", pseudo)
+	}
+	if !strings.Contains(pseudo, "jeniskendaraan()") {
+		t.Errorf("expected jeniskendaraan() inside for loop, got:\n%s", pseudo)
+	}
+	if !strings.Contains(pseudo, "predikatnilai()") {
+		t.Errorf("expected predikatnilai() inside for loop, got:\n%s", pseudo)
+	}
+
+	// Verify round-trip compilation and idempotent second decompilation
+	res, err := compiler.Compile(pseudo)
+	if err != nil {
+		t.Fatalf("Compile decompiled pseudocode failed: %v\nPseudocode:\n%s", err, pseudo)
+	}
+	if !strings.Contains(res.GoSource, "jeniskendaraan()") || !strings.Contains(res.GoSource, "predikatnilai()") {
+		t.Errorf("expected subprogram calls in compiled Go, got:\n%s", res.GoSource)
+	}
+
+	decompiledAgain, err := compiler.DecompileGo(res.GoSource)
+	if err != nil {
+		t.Fatalf("second DecompileGo failed: %v", err)
+	}
+	if !strings.Contains(decompiledAgain, "jeniskendaraan()") || !strings.Contains(decompiledAgain, "predikatnilai()") {
+		t.Errorf("expected calls preserved on second round-trip, got:\n%s", decompiledAgain)
+	}
+}

@@ -13,13 +13,18 @@ type Symbol struct {
 type TypeInfo struct{ Fields []FieldDecl }
 
 type Checker struct {
-	globals map[string]Symbol
-	types   map[string]TypeInfo
-	errors  []error
+	globals  map[string]Symbol
+	types    map[string]TypeInfo
+	programs map[string]bool
+	errors   []error
 }
 
 func NewChecker() *Checker {
 	return &Checker{globals: map[string]Symbol{}, types: map[string]TypeInfo{}}
+}
+
+func (c *Checker) SetPrograms(programs map[string]bool) {
+	c.programs = programs
 }
 func (c *Checker) report(pos Position, format string, args ...any) {
 	c.errors = append(c.errors, Diagnostic{Pos: pos, Message: fmt.Sprintf(format, args...)})
@@ -119,7 +124,7 @@ func isReservedWord(name string) bool {
     "input", "output", "for", "while", "endwhile", "to", "downto", "do", "endfor",
     "repeat", "until",
     "if", "then", "elseif", "else", "endif",
-    "depend", "on", "enddepend", "case", "default",
+    "depend", "on", "end", "case", "default",
     "div", "mod", "and", "or", "xor", "not", "integer", "int", "real", "float",
     "boolean", "bool", "string", "char", "true", "false", "benar", "salah",
 }
@@ -208,18 +213,37 @@ func (c *Checker) checkStatements(stmts []Stmt, env map[string]Symbol) {
 				c.report(v.Pos, "until condition must be boolean, got %s", cond)
 			}
 		case SwitchStmt:
-			exprType := c.infer(v.Expr, env)
-			for _, cl := range v.Cases {
-				for _, val := range cl.Values {
-					valType := c.infer(val, env)
-					if !sameType(exprType, valType) && !(isNumericType(exprType) && isNumericType(valType)) {
-						c.report(cl.Pos, "case value type %s does not match switch expression type %s", valType, exprType)
+			if v.Expr == nil {
+				for _, cl := range v.Cases {
+					for _, val := range cl.Values {
+						valType := c.infer(val, env)
+						if valType != TypeBoolean {
+							c.report(cl.Pos, "case condition must be boolean, got %s", valType)
+						}
 					}
+					c.checkStatements(cl.Body, copySymbols(env))
 				}
-				c.checkStatements(cl.Body, copySymbols(env))
+			} else {
+				exprType := c.infer(v.Expr, env)
+				for _, cl := range v.Cases {
+					for _, val := range cl.Values {
+						valType := c.infer(val, env)
+						if !sameType(exprType, valType) && !(isNumericType(exprType) && isNumericType(valType)) {
+							c.report(cl.Pos, "case value type %s does not match switch expression type %s", valType, exprType)
+						}
+					}
+					c.checkStatements(cl.Body, copySymbols(env))
+				}
 			}
 			if len(v.Default) > 0 {
 				c.checkStatements(v.Default, copySymbols(env))
+			}
+		case CallStmt:
+			if c.programs != nil && !c.programs[v.Name] {
+				c.report(v.Pos, "program or procedure %q is not declared", v.Name)
+			}
+			for _, arg := range v.Args {
+				c.infer(arg, env)
 			}
 		}
 	}

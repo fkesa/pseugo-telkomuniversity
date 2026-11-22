@@ -12,8 +12,9 @@ Dokumen ini berisi spesifikasi lengkap mengenai sintaks, logika, tipe data, oper
    - [Komentar (Comments)](#komentar-comments)
    - [Assignment & Increment/Decrement](#assignment--incrementdecrement)
    - [Input dan Output](#input-dan-output)
-   - [Percabangan (If & Depend On)](#percabangan-if---then---elseif---else---endif)
+   - [Percabangan (If & Depend On)](#percabangan-if--depend-on)
    - [Perulangan (For, While, Repeat-Until)](#perulangan-looping)
+   - [Pemanggilan Subprogram / Program Lain](#pemanggilan-subprogram--program-lain)
    - [Type Casting (Konversi Tipe)](#type-casting-konversi-tipe)
 5. [Operator yang Didukung](#5-operator-yang-didukung)
    - [Aritmetika](#operator-aritmetika)
@@ -41,7 +42,7 @@ endprogram
 ```
 
 ### Multi-Program dalam Satu File
-Compiler mendukung penulisan beberapa program dalam satu file `.pseudo`. Pada saat dikompilasi ke Go, setiap program akan dibuat sebagai fungsi terpisah dan dipanggil berurutan di dalam fungsi `main()`.
+Compiler mendukung penulisan beberapa program dalam satu file `.pseudo`. Pada saat dikompilasi ke Go, setiap program akan dibuat sebagai fungsi terpisah. Jika antar-program tidak saling memanggil, seluruh program dijalankan berurutan di dalam fungsi `main()`. Apabila ada program (misalnya `program main`) yang memanggil program lain, maka hanya program tingkat atas (*entry point*) yang dipanggil oleh fungsi `main()` hasil kompilasi agar tidak terjadi eksekusi ganda.
 
 ---
 
@@ -188,25 +189,39 @@ else
 endif
 ```
 
-#### 4. Percabangan Seleksi Nilai (`depend on ... enddepend`)
-Digunakan untuk mencocokkan suatu ekspresi dengan beberapa label nilai (ekuivalen dengan `switch-case` di Go/C):
+#### 4. Percabangan Seleksi Nilai (`depend on ... end`)
+Digunakan untuk mencocokkan suatu ekspresi dengan beberapa label nilai (ekuivalen dengan `switch-case` di Go/C). Label kasus dan `default:` ditulis sejajar dengan `depend on` (tanpa indent tambahan), sedangkan aksi di dalam tiap kasus diberi 1 tingkat indentasi, lalu blok ditutup dengan `end`:
 ```text
 depend on indeks
-    'A':
-        batasA <- 100
-        batasB <- 75
-    'B':
-        batasA <- 75
-        batasB <- 65
-    'C':
-        batasA <- 65
-        batasB <- 50
-    default:
-        batasA <- 50
-        batasB <- 0
-enddepend
+'A':
+    batasA <- 100
+    batasB <- 75
+'B':
+    batasA <- 75
+    batasB <- 65
+'C':
+    batasA <- 65
+    batasB <- 50
+default:
+    batasA <- 50
+    batasB <- 0
+end
 ```
-> Blok percabangan dapat ditutup menggunakan kata kunci `end` atau `enddepend`. Di pseudocode tidak menggunakan kata `case` (langsung nilai `'A':` atau daftar `1, 2:`), kata `case` hanya digunakan pada Go. Namun compiler tetap menoleransi jika ada yang menulis kata `case`.
+
+Selain seleksi berdasarkan nilai, `depend on` juga dapat ditulis **tanpa ekspresi** (*tagless*, ekuivalen dengan `switch { case kondisi: ... }` di Go) apabila setiap kasusnya berupa ekspresi kondisi boolean:
+```text
+depend on
+n >= 85 AND n <= 100:
+    nilai <- "A"
+n >= 75 AND n <= 84:
+    nilai <- "B"
+n >= 65 AND n <= 74:
+    nilai <- "C"
+default:
+    nilai <- "E"
+end
+```
+> Blok percabangan **wajib** ditutup menggunakan kata kunci `end` (bukan `enddepend`). Label kasus dan `default:` ditulis sejajar dengan `depend on`, sementara aksi di dalamnya diberi 1 indent. Di pseudocode tidak menggunakan kata `case` (langsung nilai `'A':`, daftar `1, 2:`, atau kondisi boolean `n >= 85:`), namun compiler tetap menoleransi jika ada yang menulis kata `case`.
 
 ### Perulangan (Looping)
 
@@ -245,6 +260,20 @@ repeat
     total <- total + x
 until x = 0
 ```
+
+### Pemanggilan Subprogram / Program Lain
+Dalam berkas multi-program, sebuah program dapat memanggil program lain yang didefinisikan pada berkas yang sama (termasuk di dalam blok `for`, `while`, `if`, maupun `depend on`):
+```text
+program main
+kamus
+    i : integer
+algoritma
+    for i <- 1 to 5 do
+        jeniskendaraan()
+    endfor
+endprogram
+```
+> Typechecker akan memverifikasi bahwa nama program/prosedur yang dipanggil sudah dideklarasikan di dalam berkas tersebut.
 
 ### Type Casting (Konversi Tipe)
 Compiler mendukung fungsi konversi tipe data eksplisit seperti yang dipelajari pada Modul 3 Praktikum:
@@ -315,8 +344,10 @@ Compiler menyediakan decompiler Go -> Pseudocode yang mengurai AST Go (`go/parse
 | `fmt.Scan(&a, &b)` | `input(a, b)` |
 | `fmt.Println("Total:", sum)` | `output("Total:", sum)` |
 | `if cond { ... } else { ... }` | `if cond then ... else ... endif` |
-| `switch x { case 1: ... default: ... }` | `depend on x ... enddepend` |
-| `switch { case a > b: ... }` | `if a > b then ... endif` (tagless switch) |
+| `switch x { case 1: ... default: ... }` | `depend on x ... end` |
+| `switch { case x == "A": ... }` | `depend on x` dengan label `"A": ... end` |
+| `switch { case a > b: ... }` | `depend on` (tanpa ekspresi) dengan kondisi `a > b: ... end` |
+| `subprogram()` | `subprogram()` (pemanggilan program/prosedur) |
 | `for i := 1; i <= n; i++` | `for i <- 1 to n do ... endfor` |
 | `for i := n; i >= 1; i--` | `for i <- n downto 1 do ... endfor` |
 | `for cond { ... }` | `while cond do ... endwhile` |
@@ -339,15 +370,26 @@ Pada kode Go, deklarasi variabel sering kali tersebar (misalnya dengan operator 
 
 ## 7. Panduan Penggunaan CLI (`pseugo`)
 
-CLI menyediakan mode sub-perintah (`convert`, `check`, dan `tokens`):
+CLI menyediakan mode sub-perintah (`run`, `convert`, `check`, dan `tokens`):
+
+### Menjalankan Pseudocode Langsung
+Mengompilasi pseudocode ke file Go sementara lalu langsung menjalankannya (mendukung `input(...)` interaktif dan otomatis membersihkan file sementara setelah selesai):
+```bash
+./pseugo run examples/div_mod.pseudo
+```
 
 ### Konversi Pseudocode ke Go
+Argumen file dibaca berdasarkan posisi (`<input> [output]`), dan arah konversi otomatis terdeteksi dari ekstensi file (`.pseudo` / `.go`) apabila flag mode tidak disertakan:
 ```bash
 # Simpan hasil Go ke file
-./pseugo convert -to-golang -i examples/div_mod.pseudo -o build/div_mod.go
+./pseugo convert -to-golang examples/div_mod.pseudo build/div_mod.go
+
+# Atau otomatis deteksi dari ekstensi
+./pseugo convert examples/div_mod.pseudo build/div_mod.go
+./pseugo examples/div_mod.pseudo build/div_mod.go
 
 # Cetak hasil Go ke terminal (stdout)
-./pseugo convert -to-golang -i examples/div_mod.pseudo
+./pseugo convert -to-golang examples/div_mod.pseudo
 
 # Jalankan kode Go yang dihasilkan
 go run ./build/div_mod.go
@@ -356,10 +398,14 @@ go run ./build/div_mod.go
 ### Konversi Go ke Pseudocode
 ```bash
 # Simpan hasil pseudocode ke file
-./pseugo convert -to-pseu -i build/div_mod.go -o div_mod.pseudo
+./pseugo convert -to-pseu build/div_mod.go div_mod.pseudo
+
+# Atau otomatis deteksi dari ekstensi
+./pseugo convert build/div_mod.go div_mod.pseudo
+./pseugo build/div_mod.go div_mod.pseudo
 
 # Cetak hasil pseudocode ke terminal (stdout)
-./pseugo convert -to-pseu -i build/div_mod.go
+./pseugo convert -to-pseu build/div_mod.go
 ```
 
 ### Menjalankan Typechecker Saja (Validasi Tanpa Kompilasi)
@@ -428,5 +474,53 @@ algoritma
     rata_rata <- total / n
     output("Total Positif:", total)
     output("Rata-rata:", rata_rata)
+endprogram
+```
+
+### Contoh 4: `depend on ... end` dan Pemanggilan Program dalam Perulangan
+```text
+program jeniskendaraan
+kamus
+    jenis, kendaraan : string
+algoritma
+    input(jenis)
+    depend on jenis
+    "A":
+        kendaraan <- "Mobil"
+    "B":
+        kendaraan <- "Motor"
+    default:
+        kendaraan <- "Jenis kendaraan tidak tersedia"
+    end
+    output(kendaraan)
+endprogram
+
+program predikatnilai
+kamus
+    n : integer
+    nilai : string
+algoritma
+    input(n)
+    depend on
+    n >= 85 AND n <= 100:
+        nilai <- "A"
+    n >= 75 AND n <= 84:
+        nilai <- "B"
+    default:
+        nilai <- "C"
+    end
+    output(nilai)
+endprogram
+
+program main
+kamus
+    i : integer
+algoritma
+    for i <- 1 to 5 do
+        jeniskendaraan()
+    endfor
+    for i <- 1 to 5 do
+        predikatnilai()
+    endfor
 endprogram
 ```

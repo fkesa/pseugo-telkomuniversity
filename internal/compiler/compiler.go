@@ -29,8 +29,14 @@ func CheckSource(source string) ([]*Program, error) {
 		return nil, err
 	}
 
+	programNames := make(map[string]bool, len(programs))
+	for _, prog := range programs {
+		programNames[prog.Name] = true
+	}
+
 	for _, prog := range programs {
 		checker := NewChecker()
+		checker.SetPrograms(programNames)
 		diagnostics := checker.Check(prog)
 
 		if len(diagnostics) > 0 {
@@ -74,8 +80,14 @@ func generateGoPrograms(programs []*Program) (string, error) {
         Name: ast.NewIdent("main"),
     }
 
+    calledPrograms := make(map[string]bool)
+    for _, prog := range programs {
+        collectCalledPrograms(prog.Body, calledPrograms)
+    }
+
     var declarations []ast.Decl
-    var calls []ast.Stmt
+    var allCalls []ast.Stmt
+    var topLevelCalls []ast.Stmt
 
     for i, prog := range programs {
         src, err := GenerateGo(prog)
@@ -150,15 +162,24 @@ func generateGoPrograms(programs []*Program) (string, error) {
         declarations = append(declarations, mainFn)
 
         // Tambahkan pemanggilan program secara berurutan.
-        calls = append(calls, &ast.ExprStmt{
+        callStmt := &ast.ExprStmt{
             X: &ast.CallExpr{
                 Fun: ast.NewIdent(functionName),
             },
-        })
+        }
+        allCalls = append(allCalls, callStmt)
+        if !calledPrograms[prog.Name] {
+            topLevelCalls = append(topLevelCalls, callStmt)
+        }
 
         if i == 0 {
             declarations = append(declarations, helpers...)
         }
+    }
+
+    calls := topLevelCalls
+    if len(calls) == 0 {
+        calls = allCalls
     }
 
     // Buat main Go yang menjalankan seluruh program.
@@ -182,4 +203,27 @@ func generateGoPrograms(programs []*Program) (string, error) {
     }
 
     return buffer.String(), nil
+}
+
+func collectCalledPrograms(stmts []Stmt, called map[string]bool) {
+    for _, s := range stmts {
+        switch v := s.(type) {
+        case CallStmt:
+            called[v.Name] = true
+        case ForStmt:
+            collectCalledPrograms(v.Body, called)
+        case WhileStmt:
+            collectCalledPrograms(v.Body, called)
+        case IfStmt:
+            collectCalledPrograms(v.Then, called)
+            collectCalledPrograms(v.Else, called)
+        case RepeatStmt:
+            collectCalledPrograms(v.Body, called)
+        case SwitchStmt:
+            for _, cl := range v.Cases {
+                collectCalledPrograms(cl.Body, called)
+            }
+            collectCalledPrograms(v.Default, called)
+        }
+    }
 }

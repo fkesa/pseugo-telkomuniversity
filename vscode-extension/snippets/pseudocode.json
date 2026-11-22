@@ -81,15 +81,29 @@
     "prefix": "depend",
     "body": [
       "depend on ${1:ekspresi}",
-      "    ${2:nilai_1}:",
-      "        ${3}",
-      "    ${4:nilai_2}:",
-      "        ${5}",
-      "    default:",
-      "        ${0}",
+      "${2:nilai_1}:",
+      "    ${3}",
+      "${4:nilai_2}:",
+      "    ${5}",
+      "default:",
+      "    ${0}",
       "end"
     ],
-    "description": "Percabangan seleksi nilai depend on ... end"
+    "description": "Percabangan seleksi nilai depend on <ekspresi> ... end"
+  },
+  "Depend On (Kondisi / Tagless Switch)": {
+    "prefix": "dependcond",
+    "body": [
+      "depend on",
+      "${1:kondisi_1}:",
+      "    ${2}",
+      "${3:kondisi_2}:",
+      "    ${4}",
+      "default:",
+      "    ${0}",
+      "end"
+    ],
+    "description": "Percabangan seleksi kondisi boolean depend on ... end"
   },
   "For Loop (To)": {
     "prefix": "for",

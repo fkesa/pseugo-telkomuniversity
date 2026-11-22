@@ -118,7 +118,7 @@
       "patterns": [
         {
           "name": "keyword.control.conditional.pseudocode",
-          "match": "(?i)\\b(if|then|else\\s+if|elseif|else|endif|depend|on|enddepend|end|case|default)\\b"
+          "match": "(?i)\\b(if|then|else\\s+if|elseif|else|endif|depend|on|end|case|default)\\b"
         }
       ]
     },
